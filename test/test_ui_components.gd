@@ -46,6 +46,7 @@ static func run(tester: Object) -> void:
 	hand.set_cards(test_cards)
 	tester.assert_equal(hand.cards.size(), 4, "HandView holds 4 cards")
 	tester.assert_equal(hand.card_views.size(), 4, "HandView created 4 CardView instances")
+	tester.assert_equal(hand.cards[0].suit, CardData.Suit.CLUBS, "Auto-sorted on set_cards: Clubs first")
 	
 	hand.sort_by_suit()
 	tester.assert_equal(hand.cards[0].suit, CardData.Suit.CLUBS, "Sorted by suit: Clubs first")
@@ -81,8 +82,69 @@ static func run(tester: Object) -> void:
 	tester.assert_equal(tabletop.current_round.current_phase, RoundState.TurnPhase.ACTION, "Stock pile click transitions phase to ACTION")
 	tester.assert_equal(tabletop.player_hand.cards.size(), 12, "Player hand increased to 12 cards after drawing")
 	
-	# Select 1 card in hand
+	# Select 1 card in hand and click Discard Pile to discard (Spec 007)
 	tabletop.player_hand.card_views[0].card_button.emit_signal("pressed")
-	tester.assert_false(tabletop.discard_button.disabled, "Discard button is enabled when 1 card is selected in ACTION phase")
+	tester.assert_equal(tabletop.player_hand.get_selected_cards().size(), 1, "1 card selected in hand")
+	
+	# Click discard pile to discard selected card
+	var initial_hand_count: int = tabletop.player_hand.cards.size()
+	tabletop.discard_pile.pile_button.emit_signal("pressed")
+	tester.assert_equal(tabletop.player_hand.cards.size(), initial_hand_count - 1, "Discarding via Discard Pile click reduced hand by 1")
+	
+	# 4. Display Settings & 1080p Tabletop Layout (Spec 004)
+	var vp_w: int = ProjectSettings.get_setting("display/window/size/viewport_width")
+	var vp_h: int = ProjectSettings.get_setting("display/window/size/viewport_height")
+	var stretch_mode: String = ProjectSettings.get_setting("display/window/stretch/mode")
+	var stretch_aspect: String = ProjectSettings.get_setting("display/window/stretch/aspect")
+	
+	tester.assert_equal(vp_w, 1920, "Project viewport width is 1920")
+	tester.assert_equal(vp_h, 1080, "Project viewport height is 1080")
+	tester.assert_equal(stretch_mode, "canvas_items", "Stretch mode is canvas_items")
+	tester.assert_equal(stretch_aspect, "expand", "Stretch aspect is expand")
+	
+	var opp_area: Control = tabletop.get_node("OpponentArea") as Control
+	var opp_melds: Control = tabletop.get_node("OpponentMeldsScroll") as Control
+	var center_tbl: Control = tabletop.get_node("CenterTable") as Control
+	var ply_melds: Control = tabletop.get_node("PlayerMeldsScroll") as Control
+	var ply_area: Control = tabletop.get_node("PlayerArea") as Control
+	
+	tester.assert_true(opp_area.offset_top >= 50.0 and opp_area.offset_bottom <= 180.0, "OpponentArea within 1080p vertical bounds")
+	tester.assert_true(opp_melds.offset_top >= 170.0 and opp_melds.offset_bottom <= 350.0, "OpponentMeldsScroll within 1080p vertical bounds")
+	tester.assert_true(center_tbl.offset_top >= 340.0 and center_tbl.offset_bottom <= 580.0, "CenterTable within 1080p vertical bounds")
+	tester.assert_true(ply_melds.offset_top >= 580.0 and ply_melds.offset_bottom <= 770.0, "PlayerMeldsScroll within expanded vertical bounds")
+	tester.assert_true(ply_area.offset_top >= 770.0 and ply_area.offset_bottom >= 1060.0 and ply_area.offset_bottom <= 1080.0, "PlayerArea expanded to 776-1068 on 1080p screen")
+	
+	# 5. PilesContainer Layout (Spec 005 - Middle-Right Placement)
+	var piles_cont: HBoxContainer = tabletop.get_node("CenterTable/PilesContainer") as HBoxContainer
+	tester.assert_true(piles_cont != null, "PilesContainer exists in CenterTable")
+	tester.assert_equal(piles_cont.anchor_left, 1.0, "PilesContainer anchor_left is 1.0 (Right side)")
+	tester.assert_equal(piles_cont.anchor_right, 1.0, "PilesContainer anchor_right is 1.0 (Right side)")
+	tester.assert_equal(piles_cont.anchor_top, 0.5, "PilesContainer anchor_top is 0.5 (Middle vertical)")
+	tester.assert_equal(piles_cont.anchor_bottom, 0.5, "PilesContainer anchor_bottom is 0.5 (Middle vertical)")
+	tester.assert_true(piles_cont.offset_right <= -50.0, "PilesContainer has right padding from window edge")
+	tester.assert_equal(piles_cont.get_child_count(), 3, "PilesContainer has exactly 3 piles (Stock, Discard, Morto)")
+	
+	# 6. Direct Table Gestures & Action Bar Elimination (Spec 007)
+	tester.assert_false(tabletop.has_node("ActionBar"), "ActionBar panel completely eliminated")
+	tester.assert_false(tabletop.has_node("ActionBar/HBox/MeldButton"), "MeldButton eliminated")
+	tester.assert_false(tabletop.has_node("ActionBar/HBox/DiscardButton"), "DiscardButton eliminated")
+	
+	# Test table click with valid meld
+	tabletop.current_round.current_player_index = 0
+	tabletop.current_round.current_phase = RoundState.TurnPhase.ACTION
+	var valid_meld_cards: Array[CardData] = [
+		CardData.new(CardData.Rank.FOUR, CardData.Suit.SPADES),
+		CardData.new(CardData.Rank.FIVE, CardData.Suit.SPADES),
+		CardData.new(CardData.Rank.SIX, CardData.Suit.SPADES)
+	]
+	tabletop.current_round.players[0].hand = valid_meld_cards.duplicate()
+	tabletop.player_hand.set_cards(valid_meld_cards)
+	for card_view in tabletop.player_hand.card_views:
+		card_view.card_button.emit_signal("pressed")
+	tester.assert_equal(tabletop.player_hand.get_selected_cards().size(), 3, "Selected 3 cards for meld")
+	
+	tabletop._on_table_clicked()
+	tester.assert_equal(tabletop.current_round.players[0].melds.size(), 1, "Clicking table melded 3 valid cards onto mesa")
+	tester.assert_equal(tabletop.player_hand.get_selected_cards().size(), 0, "Hand selection cleared after successful meld")
 	
 	tabletop.queue_free()

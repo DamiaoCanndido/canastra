@@ -23,6 +23,7 @@ func _ready() -> void:
 
 func set_cards(p_cards: Array[CardData]) -> void:
 	cards = p_cards.duplicate()
+	_sort_cards_by_suit()
 	selected_cards.clear()
 	_rebuild_card_views()
 	update_hand_layout(false)
@@ -37,14 +38,17 @@ func clear_selection() -> void:
 	update_hand_layout(true)
 	card_selection_changed.emit(selected_cards)
 
-func sort_by_suit() -> void:
+func _sort_cards_by_suit() -> void:
 	cards.sort_custom(func(a: CardData, b: CardData) -> bool:
 		if a.suit != b.suit:
 			return int(a.suit) < int(b.suit)
 		return int(a.rank) < int(b.rank)
 	)
+
+func sort_by_suit(animate: bool = true) -> void:
+	_sort_cards_by_suit()
 	_rebuild_card_views()
-	update_hand_layout(true)
+	update_hand_layout(animate)
 
 func sort_by_rank() -> void:
 	cards.sort_custom(func(a: CardData, b: CardData) -> bool:
@@ -73,16 +77,17 @@ func update_hand_layout(animate: bool = true) -> void:
 	if count == 0:
 		return
 
-	var available_width: float = max(size.x, 700.0)
-	var max_spread_angle: float = min(28.0, float(count) * 2.2) # Dynamic spread
+	var effective_width: float = size.x if size.x > 0 else 1920.0
+	var available_width: float = clamp(effective_width - 200.0, 700.0, 1400.0)
+	var max_spread_angle: float = min(30.0, float(count) * 2.2) # Dynamic spread
 	var angle_step: float = 0.0
 	if count > 1:
 		angle_step = max_spread_angle / float(count - 1)
 
 	var start_angle: float = -max_spread_angle / 2.0
-	var center_x: float = size.x / 2.0
+	var center_x: float = effective_width / 2.0
 	var card_width: float = 72.0
-	var card_spacing: float = min(46.0, (available_width - card_width) / float(max(1, count)))
+	var card_spacing: float = min(54.0, (available_width - card_width) / float(max(1, count)))
 
 	for i in range(count):
 		var cv: CardView = card_views[i]
@@ -91,8 +96,8 @@ func update_hand_layout(animate: bool = true) -> void:
 		
 		var angle_deg: float = start_angle + (i * angle_step)
 		var offset_x: float = center_x + (i - (count - 1) / 2.0) * card_spacing - (card_width / 2.0)
-		var base_arc_y: float = abs(angle_deg) * 0.6 # Parabola curve
-		var elevation_y: float = -28.0 if cv.is_selected else 0.0 # Raise selected card up
+		var base_arc_y: float = abs(angle_deg) * 0.7 # Parabola curve
+		var elevation_y: float = -32.0 if cv.is_selected else 0.0 # Raise selected card up
 		
 		var target_pos := Vector2(offset_x, base_arc_y + elevation_y)
 		var target_rot := deg_to_rad(angle_deg)

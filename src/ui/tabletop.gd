@@ -32,27 +32,20 @@ var current_round: RoundState = null
 @onready var player_melds_container: HBoxContainer = $PlayerMeldsScroll/PlayerMelds
 @onready var opponent_melds_container: HBoxContainer = $OpponentMeldsScroll/OpponentMelds
 
-@onready var meld_button: Button = $ActionBar/HBox/MeldButton
-@onready var discard_button: Button = $ActionBar/HBox/DiscardButton
-@onready var sort_suit_button: Button = $ActionBar/HBox/SortSuitButton
-@onready var sort_rank_button: Button = $ActionBar/HBox/SortRankButton
-
-func _init() -> void:
-	match_mgr = MatchManager.new(2000, 2)
-
 func _ready() -> void:
 	Engine.max_fps = 30
 	_resolve_nodes()
 	
-	# Connect Button signals
-	if meld_button != null and not meld_button.pressed.is_connected(_on_meld_button_pressed):
-		meld_button.pressed.connect(_on_meld_button_pressed)
-	if discard_button != null and not discard_button.pressed.is_connected(_on_discard_button_pressed):
-		discard_button.pressed.connect(_on_discard_button_pressed)
-	if sort_suit_button != null and not sort_suit_button.pressed.is_connected(sort_player_suit):
-		sort_suit_button.pressed.connect(sort_player_suit)
-	if sort_rank_button != null and not sort_rank_button.pressed.is_connected(sort_player_rank):
-		sort_rank_button.pressed.connect(sort_player_rank)
+	# Connect Table click signals
+	var felt: Panel = get_node_or_null("FeltBackground") as Panel
+	if felt != null and not felt.gui_input.is_connected(_on_table_gui_input):
+		felt.gui_input.connect(_on_table_gui_input)
+	var center_tbl: Control = get_node_or_null("CenterTable") as Control
+	if center_tbl != null and not center_tbl.gui_input.is_connected(_on_table_gui_input):
+		center_tbl.gui_input.connect(_on_table_gui_input)
+	var player_melds_scroll: ScrollContainer = get_node_or_null("PlayerMeldsScroll") as ScrollContainer
+	if player_melds_scroll != null and not player_melds_scroll.gui_input.is_connected(_on_table_gui_input):
+		player_melds_scroll.gui_input.connect(_on_table_gui_input)
 	
 	# Connect Pile signals
 	if stock_pile != null and not stock_pile.pile_clicked.is_connected(_on_stock_clicked):
@@ -79,16 +72,6 @@ func _resolve_nodes() -> void:
 	if opponent_hand == null and has_node("OpponentArea/OpponentHand"): opponent_hand = get_node("OpponentArea/OpponentHand") as HandView
 	if player_melds_container == null and has_node("PlayerMeldsScroll/PlayerMelds"): player_melds_container = get_node("PlayerMeldsScroll/PlayerMelds") as HBoxContainer
 	if opponent_melds_container == null and has_node("OpponentMeldsScroll/OpponentMelds"): opponent_melds_container = get_node("OpponentMeldsScroll/OpponentMelds") as HBoxContainer
-	if meld_button == null and has_node("ActionBar/HBox/MeldButton"): meld_button = get_node("ActionBar/HBox/MeldButton") as Button
-	if discard_button == null and has_node("ActionBar/HBox/DiscardButton"): discard_button = get_node("ActionBar/HBox/DiscardButton") as Button
-	if sort_suit_button == null and has_node("ActionBar/HBox/SortSuitButton"): sort_suit_button = get_node("ActionBar/HBox/SortSuitButton") as Button
-	if sort_rank_button == null and has_node("ActionBar/HBox/SortRankButton"): sort_rank_button = get_node("ActionBar/HBox/SortRankButton") as Button
-
-func sort_player_suit() -> void:
-	if player_hand != null: player_hand.sort_by_suit()
-
-func sort_player_rank() -> void:
-	if player_hand != null: player_hand.sort_by_rank()
 
 func start_new_round() -> void:
 	if match_mgr == null:
@@ -135,22 +118,7 @@ func _update_action_buttons() -> void:
 		
 	_resolve_nodes()
 	var is_player_turn: bool = (current_round.current_player_index == 0)
-	var can_meld: bool = is_player_turn and (current_round.current_phase == RoundState.TurnPhase.ACTION)
 	var sel_count: int = player_hand.get_selected_cards().size() if player_hand != null else 0
-	
-	if meld_button != null:
-		meld_button.disabled = not (can_meld and sel_count >= 3)
-		if can_meld and sel_count >= 3:
-			meld_button.text = "Baixar Jogo (%d)" % sel_count
-		else:
-			meld_button.text = "Baixar Jogo"
-			
-	if discard_button != null:
-		discard_button.disabled = not (can_meld and sel_count == 1)
-		if can_meld and sel_count == 1:
-			discard_button.text = "Descartar (1)"
-		else:
-			discard_button.text = "Descartar"
 	
 	# Update HUD
 	if hud != null:
@@ -168,13 +136,13 @@ func _update_action_buttons() -> void:
 				prompt_str = "👉 Clique no MONTE ou no LIXO para comprar uma carta."
 			else:
 				if sel_count == 0:
-					prompt_str = "Selecione cartas na mão para Baixar (mín. 3) ou 1 carta para Descartar."
+					prompt_str = "Selecione cartas na mão para Baixar (mín. 3) ou 1 carta para Descartar no Lixo."
 				elif sel_count == 1:
-					prompt_str = "1 carta selecionada: clique em 'Descartar' para encerrar o turno."
+					prompt_str = "1 carta selecionada: clique no LIXO para descartar e encerrar a vez."
 				elif sel_count == 2:
 					prompt_str = "2 cartas selecionadas: selecione mais uma para formar um jogo (mín. 3)."
 				else:
-					prompt_str = "%d cartas selecionadas: clique em 'Baixar Jogo' para colocar na mesa." % sel_count
+					prompt_str = "%d cartas selecionadas: clique na MESA para baixar o jogo!" % sel_count
 		else:
 			prompt_str = "Aguarde a jogada do Bot..."
 			
@@ -212,19 +180,69 @@ func _on_discard_pile_clicked(_type: String) -> void:
 	if current_round.current_player_index != 0:
 		if hud != null: hud.show_announcement("Aguarde a sua vez!")
 		return
-	if current_round.current_phase != RoundState.TurnPhase.DRAW:
-		if hud != null: hud.show_announcement("Você já comprou nesta rodada! Agora baixe jogos ou descarte.")
+		
+	# 1. In ACTION phase: discard selected card to Lixo
+	if current_round.current_phase == RoundState.TurnPhase.ACTION:
+		var selected: Array[CardData] = player_hand.get_selected_cards() if player_hand != null else []
+		if selected.size() == 1:
+			_execute_player_discard(selected[0])
+			return
+		elif selected.is_empty():
+			if hud != null: hud.show_announcement("Selecione 1 carta na mão para descartar no Lixo!", 2.5)
+			return
+		else:
+			if hud != null: hud.show_announcement("Selecione apenas 1 carta para descartar no Lixo! (%d selecionadas)" % selected.size(), 2.5)
+			return
+
+	# 2. In DRAW phase: draw from discard pile
+	if current_round.current_phase == RoundState.TurnPhase.DRAW:
+		if current_round.discard_pile.is_empty():
+			if hud != null: hud.show_announcement("O Lixo está vazio!")
+			return
+			
+		var drawn: Array[CardData] = current_round.draw_from_discard_pile()
+		if not drawn.is_empty():
+			_update_all_ui()
+			if hud != null:
+				hud.show_announcement("Você pegou %d cartas do Lixo!" % drawn.size())
+		return
+
+func _on_table_gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+		_on_table_clicked()
+
+func _on_table_clicked() -> void:
+	if current_round == null:
+		return
+	if current_round.current_player_index != 0:
+		if hud != null: hud.show_announcement("Aguarde a sua vez!")
+		return
+	if current_round.current_phase == RoundState.TurnPhase.DRAW:
+		if hud != null: hud.show_announcement("Compre uma carta do MONTE ou do LIXO primeiro!", 2.5)
 		return
 		
-	if current_round.discard_pile.is_empty():
-		if hud != null: hud.show_announcement("O Lixo está vazio!")
+	var selected: Array[CardData] = player_hand.get_selected_cards() if player_hand != null else []
+	if selected.is_empty():
 		return
 		
-	var drawn: Array[CardData] = current_round.draw_from_discard_pile()
-	if not drawn.is_empty():
+	if selected.size() < 3:
+		if hud != null:
+			hud.show_announcement("Selecione pelo menos 3 cartas para formar um jogo na mesa!", 2.5)
+		return
+		
+	var res := current_round.play_new_meld(selected)
+	if res.is_valid:
+		player_hand.clear_selection()
 		_update_all_ui()
 		if hud != null:
-			hud.show_announcement("Você pegou %d cartas do Lixo!" % drawn.size())
+			if res.canasta_type != MeldData.CanastaType.NONE:
+				hud.show_announcement("CANASTRA FORMADA! (%s)" % ("LIMPA" if not res.is_dirty else "SUJA"), 3.0)
+			else:
+				hud.show_announcement("Jogo baixado na mesa com sucesso!", 2.5)
+		_check_round_end()
+	else:
+		if hud != null:
+			hud.show_announcement("Erro ao baixar jogo: %s" % res.error_message, 3.0)
 
 func _on_hand_card_clicked(_card: CardData) -> void:
 	if current_round != null and current_round.current_player_index == 0:
@@ -236,32 +254,10 @@ func _on_card_selection_changed(_selected: Array[CardData]) -> void:
 	_update_action_buttons()
 
 func _on_meld_button_pressed() -> void:
-	if player_hand == null: return
-	var selected: Array[CardData] = player_hand.get_selected_cards()
-	if selected.size() < 3:
-		return
-		
-	var res := current_round.play_new_meld(selected)
-	if res.is_valid:
-		player_hand.clear_selection()
-		_update_all_ui()
-		if hud != null:
-			if res.canasta_type != MeldData.CanastaType.NONE:
-				hud.show_announcement("CANASTRA FORMADA! (%s)" % ("LIMPA" if not res.is_dirty else "SUJA"), 3.0)
-			else:
-				hud.show_announcement("Jogo baixado com sucesso!")
-		_check_round_end()
-	else:
-		if hud != null:
-			hud.show_announcement("Erro: %s" % res.error_message)
+	_on_table_clicked()
 
 func _on_discard_button_pressed() -> void:
-	if player_hand == null: return
-	var selected: Array[CardData] = player_hand.get_selected_cards()
-	if selected.size() != 1:
-		return
-		
-	_execute_player_discard(selected[0])
+	_on_discard_pile_clicked("DISCARD")
 
 func _on_card_dropped_on_discard(_type: String, card: CardData) -> void:
 	if current_round == null or current_round.current_player_index != 0 or current_round.current_phase != RoundState.TurnPhase.ACTION:
