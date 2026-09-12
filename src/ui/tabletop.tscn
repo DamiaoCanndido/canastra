@@ -8,6 +8,42 @@
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_felt"]
 bg_color = Color(0.07, 0.22, 0.12, 1)
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_sort_btn"]
+bg_color = Color(0.08, 0.18, 0.12, 0.85)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.3, 0.6, 0.4, 0.6)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_sort_btn_hover"]
+bg_color = Color(0.14, 0.28, 0.2, 0.95)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.4, 0.8, 0.5, 0.9)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_sort_btn_pressed"]
+bg_color = Color(0.05, 0.12, 0.08, 0.95)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.5, 0.9, 0.6, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
 [node name="Tabletop" type="Control"]
 layout_mode = 3
 anchors_preset = 15
@@ -140,3 +176,32 @@ mouse_filter = 2
 [node name="PlayerHand" parent="PlayerArea" instance=ExtResource("3_hand")]
 layout_mode = 1
 mouse_filter = 2
+
+[node name="SortControls" type="VBoxContainer" parent="PlayerArea"]
+layout_mode = 1
+offset_left = 40.0
+offset_top = 24.0
+offset_right = 210.0
+offset_bottom = 114.0
+mouse_filter = 2
+theme_override_constants/separation = 8
+
+[node name="SortSuitButton" type="Button" parent="PlayerArea/SortControls"]
+custom_minimum_size = Vector2(170, 38)
+layout_mode = 2
+mouse_default_cursor_shape = 2
+theme_override_font_sizes/font_size = 13
+theme_override_styles/normal = SubResource("StyleBoxFlat_sort_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_sort_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_sort_btn_pressed")
+text = "● ♣♦ Naipes"
+
+[node name="SortRankButton" type="Button" parent="PlayerArea/SortControls"]
+custom_minimum_size = Vector2(170, 38)
+layout_mode = 2
+mouse_default_cursor_shape = 2
+theme_override_font_sizes/font_size = 13
+theme_override_styles/normal = SubResource("StyleBoxFlat_sort_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_sort_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_sort_btn_pressed")
+text = "○ 🔢 Numeração"

@@ -17,13 +17,23 @@ var selected_cards: Array[CardData] = []
 @export var is_interactive: bool = true
 @export var is_face_up: bool = true
 
+enum SortMode {
+	SUIT,
+	RANK
+}
+
+var current_sort_mode: SortMode = SortMode.SUIT
+
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	resized.connect(_on_resized)
 
 func set_cards(p_cards: Array[CardData]) -> void:
 	cards = p_cards.duplicate()
-	_sort_cards_by_suit()
+	if current_sort_mode == SortMode.RANK:
+		_sort_cards_by_rank()
+	else:
+		_sort_cards_by_suit()
 	selected_cards.clear()
 	_rebuild_card_views()
 	update_hand_layout(false)
@@ -45,19 +55,24 @@ func _sort_cards_by_suit() -> void:
 		return int(a.rank) < int(b.rank)
 	)
 
-func sort_by_suit(animate: bool = true) -> void:
-	_sort_cards_by_suit()
-	_rebuild_card_views()
-	update_hand_layout(animate)
-
-func sort_by_rank() -> void:
+func _sort_cards_by_rank() -> void:
 	cards.sort_custom(func(a: CardData, b: CardData) -> bool:
 		if a.rank != b.rank:
 			return int(a.rank) < int(b.rank)
 		return int(a.suit) < int(b.suit)
 	)
+
+func sort_by_suit(animate: bool = true) -> void:
+	current_sort_mode = SortMode.SUIT
+	_sort_cards_by_suit()
 	_rebuild_card_views()
-	update_hand_layout(true)
+	update_hand_layout(animate)
+
+func sort_by_rank(animate: bool = true) -> void:
+	current_sort_mode = SortMode.RANK
+	_sort_cards_by_rank()
+	_rebuild_card_views()
+	update_hand_layout(animate)
 
 func _rebuild_card_views() -> void:
 	for cv in card_views:
@@ -69,6 +84,12 @@ func _rebuild_card_views() -> void:
 		add_child(cv)
 		cv.setup(card_data, is_face_up)
 		cv.set_interactive(is_interactive)
+		var is_sel: bool = false
+		for sc in selected_cards:
+			if sc.uid == card_data.uid:
+				is_sel = true
+				break
+		cv.set_selected(is_sel)
 		cv.card_clicked.connect(_on_card_clicked)
 		card_views.append(cv)
 

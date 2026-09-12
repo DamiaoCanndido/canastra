@@ -32,6 +32,9 @@ var current_round: RoundState = null
 @onready var player_melds_container: HBoxContainer = $PlayerMeldsScroll/PlayerMelds
 @onready var opponent_melds_container: HBoxContainer = $OpponentMeldsScroll/OpponentMelds
 
+@onready var sort_suit_button: Button = get_node_or_null("PlayerArea/SortControls/SortSuitButton") as Button
+@onready var sort_rank_button: Button = get_node_or_null("PlayerArea/SortControls/SortRankButton") as Button
+
 func _ready() -> void:
 	Engine.max_fps = 30
 	_resolve_nodes()
@@ -55,6 +58,13 @@ func _ready() -> void:
 	if discard_pile != null and not discard_pile.card_dropped.is_connected(_on_card_dropped_on_discard):
 		discard_pile.card_dropped.connect(_on_card_dropped_on_discard)
 	
+	# Connect Sort Filter buttons
+	if sort_suit_button != null and not sort_suit_button.pressed.is_connected(_on_sort_suit_pressed):
+		sort_suit_button.pressed.connect(_on_sort_suit_pressed)
+	if sort_rank_button != null and not sort_rank_button.pressed.is_connected(_on_sort_rank_pressed):
+		sort_rank_button.pressed.connect(_on_sort_rank_pressed)
+	_update_sort_buttons_visuals()
+	
 	if player_hand != null:
 		if not player_hand.card_selection_changed.is_connected(_on_card_selection_changed):
 			player_hand.card_selection_changed.connect(_on_card_selection_changed)
@@ -72,6 +82,8 @@ func _resolve_nodes() -> void:
 	if opponent_hand == null and has_node("OpponentArea/OpponentHand"): opponent_hand = get_node("OpponentArea/OpponentHand") as HandView
 	if player_melds_container == null and has_node("PlayerMeldsScroll/PlayerMelds"): player_melds_container = get_node("PlayerMeldsScroll/PlayerMelds") as HBoxContainer
 	if opponent_melds_container == null and has_node("OpponentMeldsScroll/OpponentMelds"): opponent_melds_container = get_node("OpponentMeldsScroll/OpponentMelds") as HBoxContainer
+	if sort_suit_button == null and has_node("PlayerArea/SortControls/SortSuitButton"): sort_suit_button = get_node("PlayerArea/SortControls/SortSuitButton") as Button
+	if sort_rank_button == null and has_node("PlayerArea/SortControls/SortRankButton"): sort_rank_button = get_node("PlayerArea/SortControls/SortRankButton") as Button
 
 func start_new_round() -> void:
 	if match_mgr == null:
@@ -111,6 +123,7 @@ func _update_all_ui() -> void:
 		_refresh_melds(opponent_melds_container, p1.melds)
 	
 	_update_action_buttons()
+	_update_sort_buttons_visuals()
 
 func _update_action_buttons() -> void:
 	if current_round == null:
@@ -157,6 +170,7 @@ func _refresh_melds(container: HBoxContainer, melds: Array[MeldData]) -> void:
 		container.add_child(mgv)
 		mgv.setup(meld)
 		mgv.append_card_requested.connect(_on_append_card_requested)
+		mgv.meld_clicked.connect(_on_meld_clicked)
 
 func _on_stock_clicked(_type: String) -> void:
 	if current_round == null:
@@ -225,24 +239,83 @@ func _on_table_clicked() -> void:
 	if selected.is_empty():
 		return
 		
-	if selected.size() < 3:
-		if hud != null:
-			hud.show_announcement("Selecione pelo menos 3 cartas para formar um jogo na mesa!", 2.5)
+	# 1. If 3 or more cards selected, first try to play as a new meld
+	if selected.size() >= 3:
+		var res := current_round.play_new_meld(selected)
+		if res.is_valid:
+			player_hand.clear_selection()
+			_update_all_ui()
+			if hud != null:
+				if res.canasta_type != MeldData.CanastaType.NONE:
+					hud.show_announcement("CANASTRA FORMADA! (%s)" % ("LIMPA" if not res.is_dirty else "SUJA"), 3.0)
+				else:
+					hud.show_announcement("Jogo baixado na mesa com sucesso!", 2.5)
+			_check_round_end()
+			return
+		# If playing as a new meld was not valid, fall through to check existing melds
+
+	# 2. Check if selected card(s) can be appended to player's existing melds
+	var player: PlayerState = current_round.get_current_player()
+	var matching_melds: Array[MeldData] = []
+	for meld in player.melds:
+		var check_res := MeldValidator.can_append_to_meld(meld, selected)
+		if check_res.is_valid:
+			matching_melds.append(meld)
+
+	if matching_melds.size() == 1:
+		_on_meld_clicked(matching_melds[0])
 		return
-		
-	var res := current_round.play_new_meld(selected)
+	elif matching_melds.size() > 1:
+		if hud != null:
+			hud.show_announcement("Mais de um jogo pode receber esta(s) carta(s). Clique diretamente no jogo desejado!", 3.0)
+		return
+	else:
+		if selected.size() < 3:
+			if hud != null:
+				hud.show_announcement("Para um novo jogo, selecione ao menos 3 cartas. Para adicionar a um jogo existente, selecione cartas compatíveis e clique diretamente nele.", 3.0)
+		else:
+			if hud != null:
+				hud.show_announcement("Erro ao baixar jogo: As cartas não formam um novo jogo válido nem encaixam em jogos existentes.", 3.0)
+
+func _on_meld_clicked(meld: MeldData) -> void:
+	if current_round == null:
+		return
+	if current_round.current_player_index != 0:
+		if hud != null: hud.show_announcement("Aguarde a sua vez!", 2.5)
+		return
+	if current_round.current_phase == RoundState.TurnPhase.DRAW:
+		if hud != null: hud.show_announcement("Compre uma carta do MONTE ou do LIXO primeiro!", 2.5)
+		return
+	if current_round.current_phase != RoundState.TurnPhase.ACTION:
+		return
+
+	var player: PlayerState = current_round.get_current_player()
+	if player.find_meld_by_uid(meld.uid) == null:
+		if hud != null:
+			hud.show_announcement("Você só pode adicionar cartas aos jogos da sua equipe!", 2.5)
+		return
+
+	var selected: Array[CardData] = player_hand.get_selected_cards() if player_hand != null else []
+	if selected.is_empty():
+		if hud != null:
+			hud.show_announcement("Selecione a(s) carta(s) na sua mão antes de clicar no jogo para adicioná-la(s).", 2.5)
+		return
+
+	var was_canasta: bool = meld.is_canasta()
+	var res := current_round.append_to_meld(meld.uid, selected)
 	if res.is_valid:
-		player_hand.clear_selection()
+		if player_hand != null:
+			player_hand.clear_selection()
 		_update_all_ui()
 		if hud != null:
-			if res.canasta_type != MeldData.CanastaType.NONE:
-				hud.show_announcement("CANASTRA FORMADA! (%s)" % ("LIMPA" if not res.is_dirty else "SUJA"), 3.0)
+			if not was_canasta and meld.is_canasta():
+				hud.show_announcement("CANASTRA FORMADA! (%s)" % ("LIMPA" if not meld.is_dirty else "SUJA"), 3.0)
 			else:
-				hud.show_announcement("Jogo baixado na mesa com sucesso!", 2.5)
+				hud.show_announcement("Carta(s) adicionada(s) ao jogo na mesa com sucesso!", 2.5)
 		_check_round_end()
 	else:
 		if hud != null:
-			hud.show_announcement("Erro ao baixar jogo: %s" % res.error_message, 3.0)
+			hud.show_announcement("Não é possível adicionar a este jogo: %s" % res.error_message, 3.0)
 
 func _on_hand_card_clicked(_card: CardData) -> void:
 	if current_round != null and current_round.current_player_index == 0:
@@ -258,6 +331,37 @@ func _on_meld_button_pressed() -> void:
 
 func _on_discard_button_pressed() -> void:
 	_on_discard_pile_clicked("DISCARD")
+
+func _on_sort_suit_pressed() -> void:
+	if player_hand != null:
+		player_hand.sort_by_suit()
+		_update_sort_buttons_visuals()
+		if hud != null:
+			hud.show_announcement("Mão ordenada por Naipes (♣ ♦ ♥ ♠)", 1.8)
+
+func _on_sort_rank_pressed() -> void:
+	if player_hand != null:
+		player_hand.sort_by_rank()
+		_update_sort_buttons_visuals()
+		if hud != null:
+			hud.show_announcement("Mão ordenada por Numeração (Cartas Iguais)", 1.8)
+
+func sort_player_suit() -> void:
+	_on_sort_suit_pressed()
+
+func sort_player_rank() -> void:
+	_on_sort_rank_pressed()
+
+func _update_sort_buttons_visuals() -> void:
+	if player_hand == null:
+		return
+	var is_suit: bool = (player_hand.current_sort_mode == HandView.SortMode.SUIT)
+	if sort_suit_button != null:
+		sort_suit_button.text = "● ♣♦ Naipes" if is_suit else "○ ♣♦ Naipes"
+		sort_suit_button.modulate = Color(1.1, 1.05, 0.9) if is_suit else Color(0.75, 0.75, 0.8)
+	if sort_rank_button != null:
+		sort_rank_button.text = "● 🔢 Numeração" if not is_suit else "○ 🔢 Numeração"
+		sort_rank_button.modulate = Color(1.1, 1.05, 0.9) if not is_suit else Color(0.75, 0.75, 0.8)
 
 func _on_card_dropped_on_discard(_type: String, card: CardData) -> void:
 	if current_round == null or current_round.current_player_index != 0 or current_round.current_phase != RoundState.TurnPhase.ACTION:
@@ -278,15 +382,28 @@ func _on_append_card_requested(meld: MeldData, card: CardData) -> void:
 	if current_round == null or current_round.current_player_index != 0 or current_round.current_phase != RoundState.TurnPhase.ACTION:
 		return
 		
-	var res := current_round.append_to_meld(meld.uid, [card])
+	var player: PlayerState = current_round.get_current_player()
+	if player.find_meld_by_uid(meld.uid) == null:
+		if hud != null:
+			hud.show_announcement("Você só pode adicionar cartas aos jogos da sua equipe!", 2.5)
+		return
+
+	var was_canasta: bool = meld.is_canasta()
+	var append_arr: Array[CardData] = [card]
+	var res := current_round.append_to_meld(meld.uid, append_arr)
 	if res.is_valid:
+		if player_hand != null:
+			player_hand.clear_selection()
 		_update_all_ui()
 		if hud != null:
-			hud.show_announcement("Carta adicionada ao jogo na mesa!")
+			if not was_canasta and meld.is_canasta():
+				hud.show_announcement("CANASTRA FORMADA! (%s)" % ("LIMPA" if not meld.is_dirty else "SUJA"), 3.0)
+			else:
+				hud.show_announcement("Carta adicionada ao jogo na mesa!")
 		_check_round_end()
 	else:
 		if hud != null:
-			hud.show_announcement("Não é possível encaixar esta carta neste jogo.")
+			hud.show_announcement("Não é possível encaixar esta carta neste jogo: %s" % res.error_message, 3.0)
 
 func _trigger_bot_turn() -> void:
 	if current_round == null or current_round.is_round_over or current_round.current_player_index != 1:
@@ -308,7 +425,7 @@ func _execute_bot_turn() -> void:
 	current_round.draw_from_stock()
 	_update_all_ui()
 	
-	# 2. Bot Meld evaluation (simple heuristic)
+	# 2. Bot Meld evaluation (heuristic: try appending first, then new meld)
 	_bot_try_melds(bot)
 	_update_all_ui()
 	
@@ -321,7 +438,15 @@ func _execute_bot_turn() -> void:
 	_check_round_end()
 
 func _bot_try_melds(bot: PlayerState) -> void:
-	# Try groups of 3 cards in bot hand
+	# 1. Try appending single cards from bot hand to bot's existing melds
+	for meld in bot.melds:
+		for card in bot.hand:
+			var append_arr: Array[CardData] = [card]
+			var append_res := current_round.append_to_meld(meld.uid, append_arr)
+			if append_res.is_valid:
+				return # Appended card, done for this turn
+
+	# 2. Try groups of 3 cards in bot hand to create a new meld
 	var h_size: int = bot.hand.size()
 	for i in range(h_size):
 		for j in range(i + 1, h_size):

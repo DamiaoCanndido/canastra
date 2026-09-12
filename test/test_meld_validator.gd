@@ -168,3 +168,46 @@ static func run(tester: Object) -> void:
 	tester.assert_true(res13.is_valid, "Appending 9♥ to dirty 6-card run is valid")
 	tester.assert_true(res13.is_dirty, "Meld remains dirty")
 	tester.assert_equal(res13.canasta_type, MeldData.CanastaType.DIRTY, "Becomes DIRTY_CANASTA upon reaching 7 cards")
+
+	# 14. Spec 008: Appending 9♣ and 5♣ to [6♣, 7♣, 8♣]
+	var clubs_run := MeldData.new(MeldData.MeldType.RUN, CardData.Suit.CLUBS)
+	clubs_run.cards = [
+		card(CardData.Rank.SIX, CardData.Suit.CLUBS),
+		card(CardData.Rank.SEVEN, CardData.Suit.CLUBS),
+		card(CardData.Rank.EIGHT, CardData.Suit.CLUBS)
+	]
+	var app_9 := MeldValidator.can_append_to_meld(clubs_run, [card(CardData.Rank.NINE, CardData.Suit.CLUBS)])
+	tester.assert_true(app_9.is_valid, "Appending 9♣ to [6♣, 7♣, 8♣] is valid")
+	tester.assert_false(app_9.is_dirty, "Sequence [6♣, 7♣, 8♣, 9♣] remains clean")
+
+	var app_5 := MeldValidator.can_append_to_meld(clubs_run, [card(CardData.Rank.FIVE, CardData.Suit.CLUBS)])
+	tester.assert_true(app_5.is_valid, "Appending 5♣ to [6♣, 7♣, 8♣] is valid")
+	tester.assert_equal(app_5.ordered_cards[0].rank, CardData.Rank.FIVE, "5♣ is ordered at the front")
+
+	# 15. Spec 008: Appending Joker / 2 wildcard to clean sequence
+	var app_jk := MeldValidator.can_append_to_meld(clubs_run, [joker()])
+	tester.assert_true(app_jk.is_valid, "Appending Joker to clean sequence is valid")
+	tester.assert_true(app_jk.is_dirty, "Sequence with appended Joker is dirty")
+
+	var app_2s := MeldValidator.can_append_to_meld(clubs_run, [card(CardData.Rank.TWO, CardData.Suit.SPADES)])
+	tester.assert_true(app_2s.is_valid, "Appending 2♠ wildcard to clean sequence is valid")
+	tester.assert_true(app_2s.is_dirty, "Sequence with appended 2♠ is dirty")
+
+	# 16. Spec 008: Appending multiple cards at once
+	var app_multi := MeldValidator.can_append_to_meld(clubs_run, [
+		card(CardData.Rank.FIVE, CardData.Suit.CLUBS),
+		card(CardData.Rank.NINE, CardData.Suit.CLUBS)
+	])
+	tester.assert_true(app_multi.is_valid, "Appending [5♣, 9♣] at once is valid")
+	tester.assert_equal(app_multi.ordered_cards.size(), 5, "Resulting sequence has 5 cards")
+
+	# 17. Spec 008: Appending to a Set (Trinca)
+	var set_run := MeldData.new(MeldData.MeldType.SET, CardData.Suit.NONE)
+	set_run.cards = [
+		card(CardData.Rank.SEVEN, CardData.Suit.CLUBS),
+		card(CardData.Rank.SEVEN, CardData.Suit.DIAMONDS),
+		card(CardData.Rank.SEVEN, CardData.Suit.HEARTS)
+	]
+	var app_set := MeldValidator.can_append_to_meld(set_run, [card(CardData.Rank.SEVEN, CardData.Suit.SPADES)])
+	tester.assert_true(app_set.is_valid, "Appending 7♠ to [7♣, 7♦, 7♥] is valid")
+	tester.assert_equal(app_set.ordered_cards.size(), 4, "Resulting set has 4 cards")

@@ -18,7 +18,20 @@ var meld_data: MeldData = null
 @onready var badge_label: Label = $BadgePanel/BadgeLabel
 
 func _ready() -> void:
+	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	gui_input.connect(_on_gui_input)
+	mouse_entered.connect(_on_mouse_entered)
+	mouse_exited.connect(_on_mouse_exited)
+
+func _on_mouse_entered() -> void:
+	if is_inside_tree():
+		var tween := create_tween().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		tween.tween_property(self, "modulate", Color(1.15, 1.15, 1.05), 0.12)
+
+func _on_mouse_exited() -> void:
+	if is_inside_tree():
+		var tween := create_tween().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		tween.tween_property(self, "modulate", Color.WHITE, 0.12)
 
 func setup(p_meld: MeldData) -> void:
 	meld_data = p_meld

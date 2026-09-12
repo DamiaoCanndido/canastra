@@ -44,8 +44,7 @@ func _resolve_nodes() -> void:
 			card_button.mouse_entered.connect(_on_mouse_entered)
 		if not card_button.mouse_exited.is_connected(_on_mouse_exited):
 			card_button.mouse_exited.connect(_on_mouse_exited)
-		if not card_button.gui_input.is_connected(_on_button_gui_input):
-			card_button.gui_input.connect(_on_button_gui_input)
+		card_button.set_drag_forwarding(_get_drag_data, Callable(), Callable())
 
 func _ready() -> void:
 	_resolve_nodes()
@@ -185,13 +184,28 @@ func _on_mouse_exited() -> void:
 		var tween := create_tween().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 		tween.tween_property(self, "scale", Vector2.ONE, 0.12)
 
-func _on_button_gui_input(event: InputEvent) -> void:
-	if not is_interactive:
-		return
-	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
-		if event.pressed:
-			accept_event()
-			card_clicked.emit(self, card_data)
+func _get_drag_data(_at_position: Vector2) -> Variant:
+	if not is_interactive or card_data == null:
+		return null
+		
+	var drag_data: Dictionary = {
+		"type": "CARD",
+		"card_data": card_data,
+		"card_view": self
+	}
+	
+	var preview: Control = Control.new()
+	var card_scene := load("res://src/ui/card_view.tscn") as PackedScene
+	if card_scene != null:
+		var preview_cv: CardView = card_scene.instantiate() as CardView
+		preview.add_child(preview_cv)
+		preview_cv.setup(card_data, is_face_up)
+		preview_cv.position = -base_size / 2.0
+		preview_cv.modulate = Color(1.0, 1.0, 1.0, 0.85)
+	if is_inside_tree():
+		set_drag_preview(preview)
+	
+	return drag_data
 
 func _gui_input(event: InputEvent) -> void:
 	if not is_interactive:
