@@ -40,6 +40,7 @@ func _resolve_nodes() -> void:
 			pile_button.mouse_exited.connect(_on_mouse_exited)
 		if not pile_button.gui_input.is_connected(_on_button_gui_input):
 			pile_button.gui_input.connect(_on_button_gui_input)
+		pile_button.set_drag_forwarding(_get_drag_data, _can_drop_forward, _drop_forward)
 
 func _ready() -> void:
 	_resolve_nodes()
@@ -100,9 +101,49 @@ func _can_drop_data(_at_position: Vector2, data: Variant) -> bool:
 
 func _drop_data(_at_position: Vector2, data: Variant) -> void:
 	if is_drop_target and typeof(data) == TYPE_DICTIONARY and data.get("type") == "CARD":
-		var c_data: CardData = data.get("card_data") as CardData
+		var c_data: CardData = null
+		if data.has("cards") and not (data["cards"] as Array).is_empty():
+			c_data = data["cards"][0] as CardData
+		elif data.has("card_data"):
+			c_data = data["card_data"] as CardData
+			
 		if c_data != null:
 			card_dropped.emit(pile_type, c_data)
+		_reset_visual_state()
+
+func _can_drop_forward(at_position: Vector2, data: Variant) -> bool:
+	return _can_drop_data(at_position, data)
+
+func _drop_forward(at_position: Vector2, data: Variant) -> void:
+	_drop_data(at_position, data)
+
+func _get_drag_data(_at_position: Vector2) -> Variant:
+	if card_count <= 0 or (pile_type != "STOCK" and pile_type != "DISCARD"):
+		return null
+		
+	var drag_payload: Dictionary = {
+		"type": "PILE_DRAW",
+		"pile_type": pile_type
+	}
+	
+	var preview := Control.new()
+	preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var card_scene := load("res://src/ui/card_view.tscn") as PackedScene
+	if card_scene != null:
+		var preview_cv: CardView = card_scene.instantiate() as CardView
+		preview.add_child(preview_cv)
+		if pile_type == "DISCARD" and top_card != null:
+			preview_cv.setup(top_card, true)
+		else:
+			preview_cv.setup(CardData.new(), false)
+		preview_cv.position = -preview_cv.base_size / 2.0
+		preview_cv.rotation = deg_to_rad(4.0)
+		preview_cv.modulate = Color(1.0, 1.0, 1.0, 0.9)
+		
+	if is_inside_tree():
+		set_drag_preview(preview)
+		
+	return drag_payload
 
 func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
@@ -116,6 +157,14 @@ func _on_mouse_entered() -> void:
 		tween.tween_property(self, "scale", Vector2(1.08, 1.08), 0.1)
 
 func _on_mouse_exited() -> void:
+	_reset_visual_state()
+
+func _reset_visual_state() -> void:
 	if is_inside_tree():
 		var tween := create_tween().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 		tween.tween_property(self, "scale", Vector2.ONE, 0.1)
+		tween.parallel().tween_property(self, "modulate", Color.WHITE, 0.1)
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_DRAG_END:
+		_reset_visual_state()

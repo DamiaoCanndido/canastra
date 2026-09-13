@@ -274,6 +274,81 @@ static func run(tester: Object) -> void:
 	tester.assert_true(tabletop.hud.score_label == null, "ScoreLabel is null in HudView")
 	tester.assert_true(tabletop.hud.prompt_label != null, "PromptLabel is preserved in HudView")
 	
+	# 14. Spec 012: Comprehensive Drag & Drop Tabletop Experience
+	# A. Hand Reordering via Drag & Drop
+	var c0: CardData = tabletop.player_hand.cards[0]
+	var reorder_payload: Dictionary = {
+		"type": "CARD",
+		"card_data": c0,
+		"cards": [c0],
+		"source_hand": tabletop.player_hand
+	}
+	tester.assert_true(tabletop.player_hand._can_drop_data(Vector2(200, 50), reorder_payload), "HandView can drop card for internal reordering")
+	tabletop.player_hand._drop_data(Vector2(9999, 50), reorder_payload)
+	tester.assert_equal(tabletop.player_hand.cards.back().uid, c0.uid, "Card dropped at far right moved to end of hand")
+	
+	# B. Multi-Card Drag Payload
+	tabletop.player_hand.clear_selection()
+	tabletop.player_hand.card_views[0].card_button.emit_signal("pressed")
+	tabletop.player_hand.card_views[1].card_button.emit_signal("pressed")
+	tester.assert_equal(tabletop.player_hand.get_selected_cards().size(), 2, "Selected 2 cards in hand")
+	var multi_drag = tabletop.player_hand.card_views[0]._get_drag_data(Vector2.ZERO)
+	tester.assert_true(typeof(multi_drag) == TYPE_DICTIONARY, "Drag payload returned valid dictionary")
+	tester.assert_equal((multi_drag["cards"] as Array).size(), 2, "Multi-drag payload contains both selected cards")
+	
+	# C. Ghosting & Notification
+	tabletop.player_hand.set_cards_ghosting([c0], true)
+	for cv in tabletop.player_hand.card_views:
+		if cv.card_data.uid == c0.uid:
+			tester.assert_equal(cv.modulate.a, 0.35, "Dragged card has ghosting opacity 0.35")
+	tabletop.player_hand.reset_drag_ghosting()
+	for cv in tabletop.player_hand.card_views:
+		if cv.card_data.uid == c0.uid:
+			tester.assert_equal(cv.modulate.a, 1.0, "Ghosting reset restored card opacity to 1.0")
+			
+	# D. Table Drag-to-Meld
+	tabletop.current_round.current_player_index = 0
+	tabletop.current_round.current_phase = RoundState.TurnPhase.ACTION
+	var drag_meld_cards: Array[CardData] = [
+		CardData.new(CardData.Rank.SEVEN, CardData.Suit.HEARTS),
+		CardData.new(CardData.Rank.EIGHT, CardData.Suit.HEARTS),
+		CardData.new(CardData.Rank.NINE, CardData.Suit.HEARTS)
+	]
+	tabletop.current_round.players[0].hand.append_array(drag_meld_cards)
+	var meld_drag_payload: Dictionary = {
+		"type": "CARD",
+		"card_data": drag_meld_cards[0],
+		"cards": drag_meld_cards,
+		"source_hand": tabletop.player_hand
+	}
+	tester.assert_true(tabletop._can_drop_table_forward(Vector2(500, 400), meld_drag_payload), "Table accepts 3 valid cards dropped to meld")
+	var initial_melds_count: int = tabletop.current_round.players[0].melds.size()
+	tabletop._drop_table_forward(Vector2(500, 400), meld_drag_payload)
+	tester.assert_equal(tabletop.current_round.players[0].melds.size(), initial_melds_count + 1, "Dropping valid cards on table melded them successfully")
+	
+	# E. MeldGroupView Drop Validation
+	var new_meld_view: MeldGroupView = tabletop.player_melds_container.get_children().back() as MeldGroupView
+	tester.assert_true(new_meld_view != null, "New MeldGroupView exists in player melds")
+	var invalid_payload: Dictionary = {
+		"type": "CARD",
+		"card_data": CardData.new(CardData.Rank.KING, CardData.Suit.CLUBS),
+		"cards": [CardData.new(CardData.Rank.KING, CardData.Suit.CLUBS)]
+	}
+	tester.assert_false(new_meld_view._can_drop_data(Vector2.ZERO, invalid_payload), "MeldGroupView rejects invalid card drop")
+	var valid_append_card: CardData = CardData.new(CardData.Rank.TEN, CardData.Suit.HEARTS)
+	var valid_payload: Dictionary = {
+		"type": "CARD",
+		"card_data": valid_append_card,
+		"cards": [valid_append_card]
+	}
+	tester.assert_true(new_meld_view._can_drop_data(Vector2.ZERO, valid_payload), "MeldGroupView accepts valid 10♥ drop")
+	
+	# F. Drag from Pile to Draw
+	var pile_drag = tabletop.stock_pile._get_drag_data(Vector2.ZERO)
+	tester.assert_true(typeof(pile_drag) == TYPE_DICTIONARY, "Stock pile generates PILE_DRAW drag payload")
+	tester.assert_equal(pile_drag["type"], "PILE_DRAW", "Payload type is PILE_DRAW")
+	tester.assert_true(tabletop.player_hand._can_drop_data(Vector2.ZERO, pile_drag), "PlayerHand accepts PILE_DRAW drop")
+	
 	tabletop.queue_free()
 
 

@@ -5,10 +5,12 @@ extends Control
 
 const CardData = preload("res://src/core/card_data.gd")
 const MeldData = preload("res://src/core/meld_data.gd")
+const MeldValidator = preload("res://src/core/meld_validator.gd")
 const CardView = preload("res://src/ui/card_view.gd")
 const CardViewScene = preload("res://src/ui/card_view.tscn")
 
 signal append_card_requested(meld_data: MeldData, card_data: CardData)
+signal append_cards_requested(meld_data: MeldData, cards: Array[CardData])
 signal meld_clicked(meld_data: MeldData)
 
 var meld_data: MeldData = null
@@ -78,15 +80,52 @@ func update_visuals() -> void:
 		badge_panel.visible = false
 
 func _can_drop_data(_at_position: Vector2, data: Variant) -> bool:
-	if typeof(data) == TYPE_DICTIONARY and data.get("type") == "CARD":
-		return meld_data != null
+	if meld_data == null or typeof(data) != TYPE_DICTIONARY or data.get("type") != "CARD":
+		return false
+	var cards_to_check: Array[CardData] = []
+	if data.has("cards") and not (data["cards"] as Array).is_empty():
+		for c in data["cards"]:
+			if c is CardData:
+				cards_to_check.append(c as CardData)
+	elif data.has("card_data") and data["card_data"] is CardData:
+		cards_to_check.append(data["card_data"] as CardData)
+	if cards_to_check.is_empty():
+		return false
+	var res := MeldValidator.can_append_to_meld(meld_data, cards_to_check)
+	if res.is_valid:
+		_set_drop_hover_highlight(true)
+		return true
 	return false
 
 func _drop_data(_at_position: Vector2, data: Variant) -> void:
+	_set_drop_hover_highlight(false)
 	if typeof(data) == TYPE_DICTIONARY and data.get("type") == "CARD":
-		var dragged_card: CardData = data.get("card_data") as CardData
-		if dragged_card != null:
-			append_card_requested.emit(meld_data, dragged_card)
+		var cards_to_add: Array[CardData] = []
+		if data.has("cards") and not (data["cards"] as Array).is_empty():
+			for c in data["cards"]:
+				if c is CardData:
+					cards_to_add.append(c as CardData)
+		elif data.has("card_data") and data["card_data"] is CardData:
+			cards_to_add.append(data["card_data"] as CardData)
+			
+		if not cards_to_add.is_empty():
+			if cards_to_add.size() == 1:
+				append_card_requested.emit(meld_data, cards_to_add[0])
+			append_cards_requested.emit(meld_data, cards_to_add)
+
+func _set_drop_hover_highlight(active: bool) -> void:
+	if is_inside_tree():
+		var tween := create_tween().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		if active:
+			tween.tween_property(self, "modulate", Color(0.45, 1.25, 0.65), 0.1)
+			tween.parallel().tween_property(self, "scale", Vector2(1.05, 1.05), 0.1)
+		else:
+			tween.tween_property(self, "modulate", Color.WHITE, 0.1)
+			tween.parallel().tween_property(self, "scale", Vector2.ONE, 0.1)
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_DRAG_END:
+		_set_drop_hover_highlight(false)
 
 func _on_gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:

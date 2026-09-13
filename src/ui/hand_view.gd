@@ -9,6 +9,8 @@ const CardViewScene = preload("res://src/ui/card_view.tscn")
 
 signal card_selection_changed(selected_cards: Array[CardData])
 signal card_clicked_event(card_data: CardData)
+signal cards_reordered(cards: Array[CardData])
+signal pile_draw_dropped(pile_type: String)
 
 var cards: Array[CardData] = []
 var card_views: Array[CardView] = []
@@ -27,7 +29,7 @@ enum SortMode {
 var current_sort_mode: SortMode = SortMode.SUIT
 
 func _ready() -> void:
-	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	mouse_filter = Control.MOUSE_FILTER_PASS if is_interactive else Control.MOUSE_FILTER_IGNORE
 	resized.connect(_on_resized)
 
 func set_cards(p_cards: Array[CardData]) -> void:
@@ -164,3 +166,96 @@ func _on_card_clicked(card_view: CardView, card_data: CardData) -> void:
 
 func _on_resized() -> void:
 	update_hand_layout(false)
+
+func set_cards_ghosting(ghost_cards: Array[CardData], is_ghost: bool) -> void:
+	for cv in card_views:
+		var match_found: bool = false
+		for gc in ghost_cards:
+			if cv.card_data != null and cv.card_data.uid == gc.uid:
+				match_found = true
+				break
+		if match_found:
+			cv.modulate.a = 0.35 if is_ghost else 1.0
+		else:
+			cv.modulate.a = 1.0
+
+func reset_drag_ghosting() -> void:
+	for cv in card_views:
+		if is_inside_tree():
+			var tween := create_tween().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+			tween.tween_property(cv, "modulate:a", 1.0, 0.15)
+		else:
+			cv.modulate.a = 1.0
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_DRAG_END:
+		reset_drag_ghosting()
+
+func _can_drop_data(_at_position: Vector2, data: Variant) -> bool:
+	if not is_interactive:
+		return false
+	if typeof(data) != TYPE_DICTIONARY:
+		return false
+	var type_str: String = data.get("type", "")
+	if type_str == "CARD":
+		return data.get("source_hand") == self
+	elif type_str == "PILE_DRAW":
+		return true
+	return false
+
+func _drop_data(at_position: Vector2, data: Variant) -> void:
+	if typeof(data) != TYPE_DICTIONARY:
+		return
+	var type_str: String = data.get("type", "")
+	if type_str == "CARD" and data.get("source_hand") == self:
+		var dragged_cards: Array[CardData] = []
+		if data.has("cards") and not (data["cards"] as Array).is_empty():
+			for c in data["cards"]:
+				if c is CardData:
+					dragged_cards.append(c as CardData)
+		elif data.has("card_data") and data["card_data"] is CardData:
+			dragged_cards.append(data["card_data"] as CardData)
+			
+		if not dragged_cards.is_empty():
+			_reorder_cards(dragged_cards, at_position.x)
+	elif type_str == "PILE_DRAW":
+		var p_type: String = str(data.get("pile_type", ""))
+		if not p_type.is_empty():
+			pile_draw_dropped.emit(p_type)
+
+func _reorder_cards(dragged_cards: Array[CardData], drop_x: float) -> void:
+	var target_idx: int = cards.size()
+	for i in range(card_views.size()):
+		var cv: CardView = card_views[i]
+		var center_x: float = cv.position.x + (cv.size.x / 2.0)
+		if drop_x < center_x:
+			target_idx = i
+			break
+			
+	var uids_to_move: Dictionary = {}
+	for dc in dragged_cards:
+		uids_to_move[dc.uid] = true
+		
+	var new_cards: Array[CardData] = []
+	var before_target_count: int = 0
+	for i in range(min(target_idx, cards.size())):
+		if uids_to_move.has(cards[i].uid):
+			before_target_count += 1
+			
+	var adjusted_target_idx: int = max(0, target_idx - before_target_count)
+	
+	for c in cards:
+		if not uids_to_move.has(c.uid):
+			new_cards.append(c)
+			
+	adjusted_target_idx = clamp(adjusted_target_idx, 0, new_cards.size())
+	
+	for i in range(dragged_cards.size()):
+		new_cards.insert(adjusted_target_idx + i, dragged_cards[i])
+		
+	cards = new_cards
+	_rebuild_card_views()
+	update_hand_layout(true)
+	reset_drag_ghosting()
+	cards_reordered.emit(cards)
+

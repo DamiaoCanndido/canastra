@@ -40,16 +40,24 @@ func _ready() -> void:
 	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
 	_resolve_nodes()
 	
-	# Connect Table click signals
+	# Connect Table click and drag-and-drop signals
 	var felt: Panel = get_node_or_null("FeltBackground") as Panel
-	if felt != null and not felt.gui_input.is_connected(_on_table_gui_input):
-		felt.gui_input.connect(_on_table_gui_input)
+	if felt != null:
+		if not felt.gui_input.is_connected(_on_table_gui_input):
+			felt.gui_input.connect(_on_table_gui_input)
+		felt.set_drag_forwarding(Callable(), _can_drop_table_forward, _drop_table_forward)
+		
 	var center_tbl: Control = get_node_or_null("CenterTable") as Control
-	if center_tbl != null and not center_tbl.gui_input.is_connected(_on_table_gui_input):
-		center_tbl.gui_input.connect(_on_table_gui_input)
+	if center_tbl != null:
+		if not center_tbl.gui_input.is_connected(_on_table_gui_input):
+			center_tbl.gui_input.connect(_on_table_gui_input)
+		center_tbl.set_drag_forwarding(Callable(), _can_drop_table_forward, _drop_table_forward)
+		
 	var player_melds_scroll: ScrollContainer = get_node_or_null("PlayerMeldsScroll") as ScrollContainer
-	if player_melds_scroll != null and not player_melds_scroll.gui_input.is_connected(_on_table_gui_input):
-		player_melds_scroll.gui_input.connect(_on_table_gui_input)
+	if player_melds_scroll != null:
+		if not player_melds_scroll.gui_input.is_connected(_on_table_gui_input):
+			player_melds_scroll.gui_input.connect(_on_table_gui_input)
+		player_melds_scroll.set_drag_forwarding(Callable(), _can_drop_table_forward, _drop_table_forward)
 	
 	# Connect Pile signals
 	if stock_pile != null and not stock_pile.pile_clicked.is_connected(_on_stock_clicked):
@@ -71,6 +79,10 @@ func _ready() -> void:
 			player_hand.card_selection_changed.connect(_on_card_selection_changed)
 		if not player_hand.card_clicked_event.is_connected(_on_hand_card_clicked):
 			player_hand.card_clicked_event.connect(_on_hand_card_clicked)
+		if not player_hand.cards_reordered.is_connected(_on_hand_cards_reordered):
+			player_hand.cards_reordered.connect(_on_hand_cards_reordered)
+		if not player_hand.pile_draw_dropped.is_connected(_on_pile_draw_dropped):
+			player_hand.pile_draw_dropped.connect(_on_pile_draw_dropped)
 	
 	start_new_round()
 
@@ -171,6 +183,7 @@ func _refresh_melds(container: HBoxContainer, melds: Array[MeldData]) -> void:
 		container.add_child(mgv)
 		mgv.setup(meld)
 		mgv.append_card_requested.connect(_on_append_card_requested)
+		mgv.append_cards_requested.connect(_on_append_cards_requested)
 		mgv.meld_clicked.connect(_on_meld_clicked)
 
 func _on_stock_clicked(_type: String) -> void:
@@ -405,6 +418,109 @@ func _on_append_card_requested(meld: MeldData, card: CardData) -> void:
 	else:
 		if hud != null:
 			hud.show_announcement("Não é possível encaixar esta carta neste jogo: %s" % res.error_message, 3.0)
+
+func _on_append_cards_requested(meld: MeldData, append_arr: Array[CardData]) -> void:
+	if current_round == null or current_round.current_player_index != 0 or current_round.current_phase != RoundState.TurnPhase.ACTION:
+		return
+		
+	var player: PlayerState = current_round.get_current_player()
+	if player.find_meld_by_uid(meld.uid) == null:
+		if hud != null:
+			hud.show_announcement("Você só pode adicionar cartas aos jogos da sua equipe!", 2.5)
+		return
+
+	var was_canasta: bool = meld.is_canasta()
+	var res := current_round.append_to_meld(meld.uid, append_arr)
+	if res.is_valid:
+		if player_hand != null:
+			player_hand.clear_selection()
+		_update_all_ui()
+		if hud != null:
+			if not was_canasta and meld.is_canasta():
+				hud.show_announcement("CANASTRA FORMADA! (%s)" % ("LIMPA" if not meld.is_dirty else "SUJA"), 3.0)
+			else:
+				var msg: String = "Carta adicionada ao jogo na mesa!" if append_arr.size() == 1 else "%d cartas adicionadas ao jogo na mesa!" % append_arr.size()
+				hud.show_announcement(msg)
+		_check_round_end()
+	else:
+		if hud != null:
+			hud.show_announcement("Não é possível encaixar esta(s) carta(s) neste jogo: %s" % res.error_message, 3.0)
+
+func _on_hand_cards_reordered(new_cards: Array[CardData]) -> void:
+	if current_round != null and not current_round.players.is_empty():
+		current_round.players[0].hand = new_cards.duplicate()
+		if hud != null:
+			hud.show_announcement("Cartas reorganizadas na mão!", 1.5)
+
+func _on_pile_draw_dropped(p_type: String) -> void:
+	if p_type == "STOCK":
+		_on_stock_clicked("STOCK")
+	elif p_type == "DISCARD":
+		_on_discard_pile_clicked("DISCARD")
+
+func _extract_dragged_cards(data: Variant) -> Array[CardData]:
+	var cards_arr: Array[CardData] = []
+	if typeof(data) != TYPE_DICTIONARY:
+		return cards_arr
+	if data.has("cards") and not (data["cards"] as Array).is_empty():
+		for c in data["cards"]:
+			if c is CardData:
+				cards_arr.append(c as CardData)
+	elif data.has("card_data") and data["card_data"] is CardData:
+		cards_arr.append(data["card_data"] as CardData)
+	return cards_arr
+
+func _can_drop_table_forward(_at_pos: Vector2, data: Variant) -> bool:
+	if current_round == null or current_round.current_player_index != 0:
+		return false
+	if current_round.current_phase != RoundState.TurnPhase.ACTION:
+		return false
+	var dragged: Array[CardData] = _extract_dragged_cards(data)
+	if dragged.is_empty():
+		return false
+		
+	if dragged.size() >= 3:
+		var res := MeldValidator.validate_meld(dragged)
+		return res.is_valid
+	elif dragged.size() >= 1:
+		var p: PlayerState = current_round.get_current_player()
+		for meld in p.melds:
+			if MeldValidator.can_append_to_meld(meld, dragged).is_valid:
+				return true
+	return false
+
+func _drop_table_forward(_at_pos: Vector2, data: Variant) -> void:
+	if current_round == null or current_round.current_player_index != 0 or current_round.current_phase != RoundState.TurnPhase.ACTION:
+		return
+	var dragged: Array[CardData] = _extract_dragged_cards(data)
+	if dragged.is_empty():
+		return
+		
+	if dragged.size() >= 3:
+		var res := current_round.play_new_meld(dragged)
+		if res.is_valid:
+			if player_hand != null:
+				player_hand.clear_selection()
+			_update_all_ui()
+			if hud != null:
+				if res.canasta_type != MeldData.CanastaType.NONE:
+					hud.show_announcement("CANASTRA FORMADA! (%s)" % ("LIMPA" if not res.is_dirty else "SUJA"), 3.0)
+				else:
+					hud.show_announcement("Jogo baixado na mesa com sucesso!", 2.5)
+			_check_round_end()
+			return
+			
+	var player: PlayerState = current_round.get_current_player()
+	var matching_melds: Array[MeldData] = []
+	for meld in player.melds:
+		if MeldValidator.can_append_to_meld(meld, dragged).is_valid:
+			matching_melds.append(meld)
+			
+	if matching_melds.size() == 1:
+		_on_append_cards_requested(matching_melds[0], dragged)
+	elif matching_melds.size() > 1:
+		if hud != null:
+			hud.show_announcement("Solte a carta diretamente sobre o jogo desejado!", 3.0)
 
 func _trigger_bot_turn() -> void:
 	if current_round == null or current_round.is_round_over or current_round.current_player_index != 1:
