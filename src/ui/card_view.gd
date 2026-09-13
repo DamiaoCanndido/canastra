@@ -14,9 +14,11 @@ var is_hovered: bool = false
 var is_interactive: bool = true
 var base_z_index: int = 0
 
-var base_size: Vector2 = Vector2(72, 104)
+var base_size: Vector2 = Vector2(100, 145)
 
 @onready var background_panel: Panel = $Background
+@onready var front_texture: TextureRect = get_node_or_null("Background/FrontTexture") as TextureRect
+@onready var back_texture: TextureRect = get_node_or_null("Background/BackTexture") as TextureRect
 @onready var top_label: Label = $Background/TopLabel
 @onready var center_label: Label = $Background/CenterLabel
 @onready var bottom_label: Label = $Background/BottomLabel
@@ -28,6 +30,10 @@ func _resolve_nodes() -> void:
 		card_button = get_node("CardButton") as Button
 	if background_panel == null and has_node("Background"):
 		background_panel = get_node("Background") as Panel
+	if front_texture == null and has_node("Background/FrontTexture"):
+		front_texture = get_node("Background/FrontTexture") as TextureRect
+	if back_texture == null and has_node("Background/BackTexture"):
+		back_texture = get_node("Background/BackTexture") as TextureRect
 	if top_label == null and has_node("Background/TopLabel"):
 		top_label = get_node("Background/TopLabel") as Label
 	if center_label == null and has_node("Background/CenterLabel"):
@@ -95,6 +101,9 @@ func update_visuals() -> void:
 		_render_card_front()
 
 func _render_card_front() -> void:
+	if front_texture != null: front_texture.visible = true
+	if back_texture != null: back_texture.visible = false
+	
 	var s_sym: String = _get_suit_symbol()
 	var r_str: String = _get_rank_string()
 	var color: Color = _get_card_color()
@@ -106,13 +115,13 @@ func _render_card_front() -> void:
 	if card_data.is_joker():
 		if top_label != null:
 			top_label.text = "JK"
-			top_label.add_theme_color_override("font_color", Color(0.6, 0.2, 0.8))
+			top_label.add_theme_color_override("font_color", Color(0.65, 0.22, 0.15))
 		if center_label != null:
-			center_label.text = "★\nJOKER"
-			center_label.add_theme_color_override("font_color", Color(0.6, 0.2, 0.8))
+			center_label.text = "★\nCORINGA"
+			center_label.add_theme_color_override("font_color", Color(0.65, 0.22, 0.15))
 		if bottom_label != null:
 			bottom_label.text = "JK"
-			bottom_label.add_theme_color_override("font_color", Color(0.6, 0.2, 0.8))
+			bottom_label.add_theme_color_override("font_color", Color(0.65, 0.22, 0.15))
 	else:
 		if top_label != null:
 			top_label.text = "%s\n%s" % [r_str, s_sym]
@@ -125,12 +134,11 @@ func _render_card_front() -> void:
 			bottom_label.add_theme_color_override("font_color", color)
 
 func _render_card_back() -> void:
+	if front_texture != null: front_texture.visible = false
+	if back_texture != null: back_texture.visible = true
 	if top_label != null: top_label.visible = false
 	if bottom_label != null: bottom_label.visible = false
-	if center_label != null:
-		center_label.visible = true
-		center_label.text = "🂠"
-		center_label.add_theme_color_override("font_color", Color(0.2, 0.3, 0.6))
+	if center_label != null: center_label.visible = false
 
 func _get_suit_symbol() -> String:
 	if card_data == null: return ""
@@ -152,14 +160,14 @@ func _get_rank_string() -> String:
 		_: return str(int(card_data.rank))
 
 func _get_card_color() -> Color:
-	if card_data == null: return Color.BLACK
+	if card_data == null: return Color(0.12, 0.10, 0.12)
 	match card_data.suit:
 		CardData.Suit.HEARTS, CardData.Suit.DIAMONDS:
-			return Color(0.85, 0.15, 0.15) # Red
+			return Color(0.72, 0.12, 0.12) # Crimson blood ink
 		CardData.Suit.CLUBS, CardData.Suit.SPADES:
-			return Color(0.1, 0.1, 0.15) # Dark Charcoal
+			return Color(0.12, 0.10, 0.12) # Dark charcoal ink
 		_:
-			return Color(0.6, 0.2, 0.8) # Joker Purple
+			return Color(0.65, 0.22, 0.15) # Warm rust / amber for Joker
 
 func _on_button_pressed() -> void:
 	if not is_interactive:

@@ -3,23 +3,26 @@
 [ext_resource type="Script" path="res://src/ui/meld_group_view.gd" id="1_meld_group"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_badge"]
-bg_color = Color(0.1, 0.1, 0.15, 0.9)
+bg_color = Color(0.12, 0.08, 0.06, 0.95)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
-border_color = Color(1, 1, 1, 0.8)
+border_color = Color(0.95, 0.78, 0.35, 0.9)
 corner_radius_top_left = 4
 corner_radius_top_right = 4
 corner_radius_bottom_right = 4
 corner_radius_bottom_left = 4
+shadow_color = Color(0, 0, 0, 0.55)
+shadow_size = 4
+shadow_offset = Vector2(0, 2)
 
 [node name="MeldGroupView" type="Control"]
-custom_minimum_size = Vector2(80, 140)
+custom_minimum_size = Vector2(108, 180)
 layout_mode = 3
 anchors_preset = 0
-offset_right = 80.0
-offset_bottom = 140.0
+offset_right = 108.0
+offset_bottom = 180.0
 mouse_filter = 0
 script = ExtResource("1_meld_group")
 

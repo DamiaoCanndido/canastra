@@ -76,14 +76,24 @@ func update_visuals() -> void:
 		child.queue_free()
 		
 	if card_count > 0:
-		var cv: CardView = CardViewScene.instantiate() as CardView
-		card_container.add_child(cv)
-		if pile_type == "DISCARD" and top_card != null:
-			cv.setup(top_card, true)
+		if pile_type == "MORTO":
+			var morto_tex_rect := TextureRect.new()
+			morto_tex_rect.custom_minimum_size = Vector2(100, 145)
+			morto_tex_rect.size = Vector2(100, 145)
+			morto_tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			morto_tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+			morto_tex_rect.texture = preload("res://assets/textures/cards/morto_pack.jpg")
+			morto_tex_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			card_container.add_child(morto_tex_rect)
 		else:
-			cv.setup(top_card if top_card != null else CardData.new(), false) # Face down
-		cv.set_interactive(false)
-		cv.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			var cv: CardView = CardViewScene.instantiate() as CardView
+			card_container.add_child(cv)
+			if pile_type == "DISCARD" and top_card != null:
+				cv.setup(top_card, true)
+			else:
+				cv.setup(top_card if top_card != null else CardData.new(), false) # Face down
+			cv.set_interactive(false)
+			cv.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 func _on_button_pressed() -> void:
 	pile_clicked.emit(pile_type)

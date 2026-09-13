@@ -104,17 +104,14 @@ func update_hand_layout(animate: bool = true) -> void:
 
 	var effective_width: float = size.x if size.x > 0 else 1920.0
 	var effective_height: float = size.y if size.y > 0 else 210.0
-	var available_width: float = clamp(effective_width - 200.0, 700.0, 1400.0)
-	var max_spread_angle: float = min(30.0, float(count) * 2.2) # Dynamic spread
-	var angle_step: float = 0.0
-	if count > 1:
-		angle_step = max_spread_angle / float(count - 1)
+	var available_width: float = clamp(effective_width - 240.0, 700.0, 1450.0)
 
-	var start_angle: float = -max_spread_angle / 2.0
 	var center_x: float = effective_width / 2.0
-	var card_width: float = 72.0
-	var card_height: float = 104.0
-	var card_spacing: float = min(54.0, (available_width - card_width) / float(max(1, count)))
+	var card_width: float = 100.0
+	var card_height: float = 145.0
+	var card_spacing: float = min(60.0, (available_width - card_width) / float(max(1, count - 1)))
+	if count <= 1:
+		card_spacing = 0.0
 
 	var base_y: float = 0.0
 	if card_alignment == "BOTTOM":
@@ -127,19 +124,12 @@ func update_hand_layout(animate: bool = true) -> void:
 		cv.base_z_index = i
 		cv.z_index = 50 if cv.is_selected else i # Selected cards render in front
 		
-		var angle_deg: float = start_angle + (i * angle_step)
 		var offset_x: float = center_x + (i - (count - 1) / 2.0) * card_spacing - (card_width / 2.0)
+		var elevation_y: float = -32.0 if cv.is_selected else 0.0 # Raise selected card straight up
 		
-		var arc_y: float = 0.0
-		var elevation_y: float = 0.0
-		if card_alignment == "BOTTOM":
-			arc_y = abs(angle_deg) * 0.7 # Parabola curve downward at edges
-			elevation_y = -32.0 if cv.is_selected else 0.0 # Raise selected card up
-		else:
-			arc_y = abs(angle_deg) * 0.4 # Gentle arc for opponent cards
-			
-		var target_pos := Vector2(offset_x, base_y + arc_y + elevation_y)
-		var target_rot := deg_to_rad(angle_deg)
+		# Straight angle (0 degrees) as requested
+		var target_pos := Vector2(offset_x, base_y + elevation_y)
+		var target_rot := 0.0
 
 		if animate and is_inside_tree():
 			var tween := create_tween().set_parallel(true).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)

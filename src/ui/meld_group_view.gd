@@ -48,10 +48,10 @@ func update_visuals() -> void:
 		child.queue_free()
 		
 	var card_count: int = meld_data.cards.size()
-	var vertical_step: float = 18.0 # Overlap step in pixels
-	var total_height: float = 104.0 + float(max(0, card_count - 1)) * vertical_step
+	var vertical_step: float = 24.0 # Overlap step in pixels
+	var total_height: float = 145.0 + float(max(0, card_count - 1)) * vertical_step
 	
-	custom_minimum_size = Vector2(80, total_height + 30.0)
+	custom_minimum_size = Vector2(108, total_height + 34.0)
 	size = custom_minimum_size
 	
 	for i in range(card_count):
@@ -68,14 +68,14 @@ func update_visuals() -> void:
 		badge_panel.visible = true
 		match meld_data.canasta_type:
 			MeldData.CanastaType.REAL:
-				badge_label.text = "REAL (500)"
-				badge_panel.modulate = Color(0.2, 0.9, 0.4)
+				badge_label.text = "★ REAL (500) ★"
+				badge_panel.modulate = Color(0.35, 1.0, 0.55)
 			MeldData.CanastaType.CLEAN:
-				badge_label.text = "LIMPA (200)"
-				badge_panel.modulate = Color(1.0, 0.85, 0.2)
+				badge_label.text = "★ LIMPA (200) ★"
+				badge_panel.modulate = Color(1.0, 0.88, 0.35)
 			MeldData.CanastaType.DIRTY:
 				badge_label.text = "SUJA (100)"
-				badge_panel.modulate = Color(0.8, 0.8, 0.85)
+				badge_panel.modulate = Color(0.85, 0.85, 0.92)
 	else:
 		badge_panel.visible = false
 

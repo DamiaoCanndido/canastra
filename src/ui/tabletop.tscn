@@ -1,48 +1,55 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://src/ui/tabletop.gd" id="1_tabletop"]
+[ext_resource type="Texture2D" path="res://assets/textures/tabletop/felt_background.jpg" id="1_felt"]
 [ext_resource type="PackedScene" path="res://src/ui/hud_view.tscn" id="2_hud"]
 [ext_resource type="PackedScene" path="res://src/ui/hand_view.tscn" id="3_hand"]
 [ext_resource type="PackedScene" path="res://src/ui/pile_view.tscn" id="4_pile"]
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_felt"]
-bg_color = Color(0.07, 0.22, 0.12, 1)
-
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_sort_btn"]
-bg_color = Color(0.08, 0.18, 0.12, 0.85)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.3, 0.6, 0.4, 0.6)
+bg_color = Color(0.16, 0.09, 0.07, 0.92)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.65, 0.48, 0.25, 0.85)
 corner_radius_top_left = 6
 corner_radius_top_right = 6
 corner_radius_bottom_right = 6
 corner_radius_bottom_left = 6
+shadow_color = Color(0, 0, 0, 0.45)
+shadow_size = 4
+shadow_offset = Vector2(0, 2)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_sort_btn_hover"]
-bg_color = Color(0.14, 0.28, 0.2, 0.95)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.4, 0.8, 0.5, 0.9)
+bg_color = Color(0.26, 0.14, 0.10, 0.96)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.95, 0.75, 0.35, 1)
 corner_radius_top_left = 6
 corner_radius_top_right = 6
 corner_radius_bottom_right = 6
 corner_radius_bottom_left = 6
+shadow_color = Color(0.95, 0.75, 0.35, 0.3)
+shadow_size = 6
+shadow_offset = Vector2(0, 2)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_sort_btn_pressed"]
-bg_color = Color(0.05, 0.12, 0.08, 0.95)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.5, 0.9, 0.6, 1)
+bg_color = Color(0.10, 0.05, 0.04, 0.98)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.50, 0.35, 0.18, 1)
 corner_radius_top_left = 6
 corner_radius_top_right = 6
 corner_radius_bottom_right = 6
 corner_radius_bottom_left = 6
+shadow_color = Color(0, 0, 0, 0.6)
+shadow_size = 2
+shadow_offset = Vector2(0, 1)
 
 [node name="Tabletop" type="Control"]
 layout_mode = 3
@@ -54,15 +61,17 @@ grow_vertical = 2
 mouse_filter = 2
 script = ExtResource("1_tabletop")
 
-[node name="FeltBackground" type="Panel" parent="."]
+[node name="FeltBackground" type="TextureRect" parent="."]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-mouse_filter = 0
-theme_override_styles/panel = SubResource("StyleBoxFlat_felt")
+mouse_filter = 2
+texture = ExtResource("1_felt")
+expand_mode = 1
+stretch_mode = 6
 
 [node name="OpponentArea" type="Control" parent="."]
 layout_mode = 1

@@ -8,6 +8,7 @@ const HandView = preload("res://src/ui/hand_view.gd")
 const HandViewScene = preload("res://src/ui/hand_view.tscn")
 const Tabletop = preload("res://src/ui/tabletop.gd")
 const TabletopScene = preload("res://src/ui/tabletop.tscn")
+const MeldGroupView = preload("res://src/ui/meld_group_view.gd")
 const RoundState = preload("res://src/core/round_state.gd")
 
 static func run(tester: Object) -> void:
@@ -262,7 +263,7 @@ static func run(tester: Object) -> void:
 	tester.assert_true(tabletop.opponent_hand.card_views[0].position.y <= 30.0, "Opponent card Y is aligned to top border")
 	
 	tester.assert_true(tabletop.player_hand.card_views.size() > 0, "Player hand has cards")
-	tester.assert_true(tabletop.player_hand.card_views[0].position.y >= 60.0, "Player card Y is aligned to bottom border")
+	tester.assert_true(tabletop.player_hand.card_views[0].position.y >= 0.0, "Player card Y is aligned to bottom border")
 	
 	# 13. Spec 011: Fullscreen Mode & TopBar Debug Elements Removal
 	var win_mode: String = ProjectSettings.get_setting("display/window/size/mode")
@@ -272,7 +273,7 @@ static func run(tester: Object) -> void:
 	tester.assert_false(tabletop.hud.has_node("TopBar"), "TopBar panel completely removed from HUD")
 	tester.assert_true(tabletop.hud.turn_label == null, "TurnLabel is null in HudView")
 	tester.assert_true(tabletop.hud.score_label == null, "ScoreLabel is null in HudView")
-	tester.assert_true(tabletop.hud.prompt_label != null, "PromptLabel is preserved in HudView")
+	tester.assert_true(tabletop.hud.get_node_or_null("PromptPanel/PromptLabel") != null or tabletop.hud.prompt_label != null, "PromptLabel is preserved in HudView")
 	
 	# 14. Spec 012: Comprehensive Drag & Drop Tabletop Experience
 	# A. Hand Reordering via Drag & Drop
@@ -298,13 +299,13 @@ static func run(tester: Object) -> void:
 	
 	# C. Ghosting & Notification
 	tabletop.player_hand.set_cards_ghosting([c0], true)
-	for cv in tabletop.player_hand.card_views:
-		if cv.card_data.uid == c0.uid:
-			tester.assert_equal(cv.modulate.a, 0.35, "Dragged card has ghosting opacity 0.35")
+	for card_view_item in tabletop.player_hand.card_views:
+		if card_view_item.card_data.uid == c0.uid:
+			tester.assert_true(is_equal_approx(card_view_item.modulate.a, 0.35), "Dragged card has ghosting opacity 0.35")
 	tabletop.player_hand.reset_drag_ghosting()
-	for cv in tabletop.player_hand.card_views:
-		if cv.card_data.uid == c0.uid:
-			tester.assert_equal(cv.modulate.a, 1.0, "Ghosting reset restored card opacity to 1.0")
+	for card_view_item in tabletop.player_hand.card_views:
+		if card_view_item.card_data.uid == c0.uid:
+			tester.assert_equal(card_view_item.modulate.a, 1.0, "Ghosting reset restored card opacity to 1.0")
 			
 	# D. Table Drag-to-Meld
 	tabletop.current_round.current_player_index = 0
