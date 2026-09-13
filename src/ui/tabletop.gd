@@ -37,6 +37,7 @@ var current_round: RoundState = null
 
 func _ready() -> void:
 	Engine.max_fps = 30
+	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
 	_resolve_nodes()
 	
 	# Connect Table click signals
@@ -468,3 +469,16 @@ func _check_round_end() -> void:
 				results["scores"][0],
 				results["scores"][1]
 			], 5.0)
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo:
+		if event.keycode == KEY_F11 or (event.keycode == KEY_ENTER and event.alt_pressed):
+			toggle_fullscreen()
+
+func toggle_fullscreen() -> void:
+	var current_mode := DisplayServer.window_get_mode()
+	if current_mode == DisplayServer.WINDOW_MODE_FULLSCREEN or current_mode == DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN:
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+	else:
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
+

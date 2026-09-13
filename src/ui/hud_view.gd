@@ -3,9 +3,9 @@ extends Control
 
 ## Displays game status, turn instructions, scoreboards, and round over alerts.
 
-@onready var turn_label: Label = $TopBar/Margin/HBox/TurnLabel
-@onready var score_label: Label = $TopBar/Margin/HBox/ScoreLabel
-@onready var prompt_label: Label = $PromptPanel/PromptLabel
+@onready var turn_label: Label = get_node_or_null("TopBar/Margin/HBox/TurnLabel") as Label
+@onready var score_label: Label = get_node_or_null("TopBar/Margin/HBox/ScoreLabel") as Label
+@onready var prompt_label: Label = get_node_or_null("PromptPanel/PromptLabel") as Label
 
 func update_status(turn_text: String, score_text: String, prompt_text: String) -> void:
 	if turn_label != null:

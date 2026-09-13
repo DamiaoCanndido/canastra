@@ -16,6 +16,8 @@ var selected_cards: Array[CardData] = []
 
 @export var is_interactive: bool = true
 @export var is_face_up: bool = true
+@export_enum("BOTTOM", "TOP") var card_alignment: String = "BOTTOM"
+@export var vertical_margin: float = 16.0
 
 enum SortMode {
 	SUIT,
@@ -99,6 +101,7 @@ func update_hand_layout(animate: bool = true) -> void:
 		return
 
 	var effective_width: float = size.x if size.x > 0 else 1920.0
+	var effective_height: float = size.y if size.y > 0 else 210.0
 	var available_width: float = clamp(effective_width - 200.0, 700.0, 1400.0)
 	var max_spread_angle: float = min(30.0, float(count) * 2.2) # Dynamic spread
 	var angle_step: float = 0.0
@@ -108,7 +111,14 @@ func update_hand_layout(animate: bool = true) -> void:
 	var start_angle: float = -max_spread_angle / 2.0
 	var center_x: float = effective_width / 2.0
 	var card_width: float = 72.0
+	var card_height: float = 104.0
 	var card_spacing: float = min(54.0, (available_width - card_width) / float(max(1, count)))
+
+	var base_y: float = 0.0
+	if card_alignment == "BOTTOM":
+		base_y = effective_height - card_height - vertical_margin
+	else:
+		base_y = vertical_margin
 
 	for i in range(count):
 		var cv: CardView = card_views[i]
@@ -117,10 +127,16 @@ func update_hand_layout(animate: bool = true) -> void:
 		
 		var angle_deg: float = start_angle + (i * angle_step)
 		var offset_x: float = center_x + (i - (count - 1) / 2.0) * card_spacing - (card_width / 2.0)
-		var base_arc_y: float = abs(angle_deg) * 0.7 # Parabola curve
-		var elevation_y: float = -32.0 if cv.is_selected else 0.0 # Raise selected card up
 		
-		var target_pos := Vector2(offset_x, base_arc_y + elevation_y)
+		var arc_y: float = 0.0
+		var elevation_y: float = 0.0
+		if card_alignment == "BOTTOM":
+			arc_y = abs(angle_deg) * 0.7 # Parabola curve downward at edges
+			elevation_y = -32.0 if cv.is_selected else 0.0 # Raise selected card up
+		else:
+			arc_y = abs(angle_deg) * 0.4 # Gentle arc for opponent cards
+			
+		var target_pos := Vector2(offset_x, base_y + arc_y + elevation_y)
 		var target_rot := deg_to_rad(angle_deg)
 
 		if animate and is_inside_tree():

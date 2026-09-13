@@ -108,11 +108,11 @@ static func run(tester: Object) -> void:
 	var ply_melds: Control = tabletop.get_node("PlayerMeldsScroll") as Control
 	var ply_area: Control = tabletop.get_node("PlayerArea") as Control
 	
-	tester.assert_true(opp_area.offset_top >= 50.0 and opp_area.offset_bottom <= 180.0, "OpponentArea within 1080p vertical bounds")
-	tester.assert_true(opp_melds.offset_top >= 170.0 and opp_melds.offset_bottom <= 350.0, "OpponentMeldsScroll within 1080p vertical bounds")
-	tester.assert_true(center_tbl.offset_top >= 340.0 and center_tbl.offset_bottom <= 580.0, "CenterTable within 1080p vertical bounds")
-	tester.assert_true(ply_melds.offset_top >= 580.0 and ply_melds.offset_bottom <= 770.0, "PlayerMeldsScroll within expanded vertical bounds")
-	tester.assert_true(ply_area.offset_top >= 770.0 and ply_area.offset_bottom >= 1060.0 and ply_area.offset_bottom <= 1080.0, "PlayerArea expanded to 776-1068 on 1080p screen")
+	tester.assert_true(opp_area.offset_top <= 10.0 and opp_area.offset_bottom <= 130.0, "OpponentArea aligned to top border within bounds")
+	tester.assert_true(opp_melds.offset_top >= 120.0 and opp_melds.offset_bottom <= 320.0, "OpponentMeldsScroll within 1080p vertical bounds")
+	tester.assert_true(center_tbl.offset_top >= 300.0 and center_tbl.offset_bottom <= 570.0, "CenterTable within 1080p vertical bounds")
+	tester.assert_true(ply_melds.offset_top >= 560.0 and ply_melds.offset_bottom <= 760.0, "PlayerMeldsScroll within expanded vertical bounds")
+	tester.assert_true(ply_area.offset_top >= 850.0 and ply_area.offset_bottom >= 1060.0 and ply_area.offset_bottom <= 1080.0, "PlayerArea expanded to 870-1080 aligned to bottom border on 1080p screen")
 	
 	# 5. PilesContainer Layout (Spec 005 - Middle-Right Placement)
 	var piles_cont: HBoxContainer = tabletop.get_node("CenterTable/PilesContainer") as HBoxContainer
@@ -243,5 +243,37 @@ static func run(tester: Object) -> void:
 	tester.assert_equal(tabletop.player_hand.cards[0].suit, CardData.Suit.CLUBS, "Suit Clubs grouped first")
 	tester.assert_equal(tabletop.player_hand.get_selected_cards().size(), 1, "Card selection still preserved")
 	
+	# 12. Spec 010: Hands Border Alignment & Relocated Sort Controls (Bottom-Right)
+	var sort_controls: VBoxContainer = tabletop.get_node("PlayerArea/SortControls") as VBoxContainer
+	tester.assert_true(sort_controls != null, "SortControls exists in PlayerArea")
+	tester.assert_equal(sort_controls.anchor_left, 1.0, "SortControls anchor_left is 1.0 (Right side)")
+	tester.assert_equal(sort_controls.anchor_right, 1.0, "SortControls anchor_right is 1.0 (Right side)")
+	tester.assert_equal(sort_controls.anchor_top, 1.0, "SortControls anchor_top is 1.0 (Bottom side)")
+	tester.assert_equal(sort_controls.anchor_bottom, 1.0, "SortControls anchor_bottom is 1.0 (Bottom side)")
+	tester.assert_true(sort_controls.offset_right <= -30.0, "SortControls has right margin padding")
+	tester.assert_true(sort_controls.offset_bottom <= -10.0, "SortControls has bottom margin padding")
+	
+	tester.assert_equal(tabletop.player_hand.card_alignment, "BOTTOM", "PlayerHand card_alignment is BOTTOM")
+	tester.assert_equal(tabletop.opponent_hand.card_alignment, "TOP", "OpponentHand card_alignment is TOP")
+	tester.assert_equal(tabletop.opponent_hand.pivot_offset, Vector2(960, 0), "OpponentHand pivot_offset centered at 960 width")
+	
+	# Verify card positions along borders
+	tester.assert_true(tabletop.opponent_hand.card_views.size() > 0, "Opponent hand has cards")
+	tester.assert_true(tabletop.opponent_hand.card_views[0].position.y <= 30.0, "Opponent card Y is aligned to top border")
+	
+	tester.assert_true(tabletop.player_hand.card_views.size() > 0, "Player hand has cards")
+	tester.assert_true(tabletop.player_hand.card_views[0].position.y >= 60.0, "Player card Y is aligned to bottom border")
+	
+	# 13. Spec 011: Fullscreen Mode & TopBar Debug Elements Removal
+	var win_mode: String = ProjectSettings.get_setting("display/window/size/mode")
+	var borderless: bool = ProjectSettings.get_setting("display/window/size/borderless")
+	tester.assert_equal(win_mode, "fullscreen", "Window mode is set to fullscreen")
+	tester.assert_true(borderless, "Borderless window is enabled")
+	tester.assert_false(tabletop.hud.has_node("TopBar"), "TopBar panel completely removed from HUD")
+	tester.assert_true(tabletop.hud.turn_label == null, "TurnLabel is null in HudView")
+	tester.assert_true(tabletop.hud.score_label == null, "ScoreLabel is null in HudView")
+	tester.assert_true(tabletop.hud.prompt_label != null, "PromptLabel is preserved in HudView")
+	
 	tabletop.queue_free()
+
 

@@ -64,27 +64,31 @@ grow_vertical = 2
 mouse_filter = 0
 theme_override_styles/panel = SubResource("StyleBoxFlat_felt")
 
-[node name="HUD" parent="." instance=ExtResource("2_hud")]
-layout_mode = 1
-
 [node name="OpponentArea" type="Control" parent="."]
 layout_mode = 1
 anchors_preset = 10
 anchor_right = 1.0
-offset_top = 52.0
-offset_bottom = 172.0
+offset_bottom = 120.0
 grow_horizontal = 2
 mouse_filter = 2
 
 [node name="OpponentHand" parent="OpponentArea" instance=ExtResource("3_hand")]
 layout_mode = 1
-offset_top = -6.0
-offset_bottom = 98.0
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 scale = Vector2(0.85, 0.85)
-pivot_offset = Vector2(400, 45)
+pivot_offset = Vector2(960, 0)
 mouse_filter = 2
 is_interactive = false
 is_face_up = false
+card_alignment = "TOP"
+vertical_margin = 8.0
+
+[node name="HUD" parent="." instance=ExtResource("2_hud")]
+layout_mode = 1
 
 [node name="OpponentMeldsScroll" type="ScrollContainer" parent="."]
 custom_minimum_size = Vector2(0, 160)
@@ -92,9 +96,9 @@ layout_mode = 1
 anchors_preset = 10
 anchor_right = 1.0
 offset_left = 40.0
-offset_top = 176.0
+offset_top = 130.0
 offset_right = -40.0
-offset_bottom = 340.0
+offset_bottom = 300.0
 grow_horizontal = 2
 mouse_filter = 1
 vertical_scroll_mode = 0
@@ -110,8 +114,8 @@ theme_override_constants/separation = 16
 layout_mode = 1
 anchors_preset = 10
 anchor_right = 1.0
-offset_top = 346.0
-offset_bottom = 576.0
+offset_top = 310.0
+offset_bottom = 560.0
 grow_horizontal = 2
 mouse_filter = 0
 
@@ -150,9 +154,9 @@ layout_mode = 1
 anchors_preset = 10
 anchor_right = 1.0
 offset_left = 40.0
-offset_top = 582.0
+offset_top = 570.0
 offset_right = -40.0
-offset_bottom = 766.0
+offset_bottom = 750.0
 grow_horizontal = 2
 mouse_filter = 0
 vertical_scroll_mode = 0
@@ -168,21 +172,35 @@ theme_override_constants/separation = 16
 layout_mode = 1
 anchors_preset = 10
 anchor_right = 1.0
-offset_top = 776.0
-offset_bottom = 1068.0
+offset_top = 870.0
+offset_bottom = 1080.0
 grow_horizontal = 2
 mouse_filter = 2
 
 [node name="PlayerHand" parent="PlayerArea" instance=ExtResource("3_hand")]
 layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 mouse_filter = 2
+card_alignment = "BOTTOM"
+vertical_margin = 16.0
 
 [node name="SortControls" type="VBoxContainer" parent="PlayerArea"]
 layout_mode = 1
-offset_left = 40.0
-offset_top = 24.0
-offset_right = 210.0
-offset_bottom = 114.0
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -210.0
+offset_top = -106.0
+offset_right = -40.0
+offset_bottom = -16.0
+grow_horizontal = 0
+grow_vertical = 0
 mouse_filter = 2
 theme_override_constants/separation = 8
 
