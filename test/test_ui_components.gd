@@ -350,6 +350,57 @@ static func run(tester: Object) -> void:
 	tester.assert_equal(pile_drag["type"], "PILE_DRAW", "Payload type is PILE_DRAW")
 	tester.assert_true(tabletop.player_hand._can_drop_data(Vector2.ZERO, pile_drag), "PlayerHand accepts PILE_DRAW drop")
 	
+	# 15. Spec 014: Four-Quadrant Card Layout & 50% Horizontal Overlap
+	var quad_cv: CardView = CardViewScene.instantiate() as CardView
+	root.add_child(quad_cv)
+	var ten_hearts := CardData.new(CardData.Rank.TEN, CardData.Suit.HEARTS)
+	quad_cv.setup(ten_hearts, true)
+	
+	tester.assert_true(quad_cv.rank_label != null, "RankLabel exists in CardView")
+	tester.assert_true(quad_cv.suit_label != null, "SuitLabel exists in CardView")
+	tester.assert_equal(quad_cv.rank_label.anchor_left, 0.0, "RankLabel anchor_left is 0.0")
+	tester.assert_equal(quad_cv.rank_label.anchor_top, 0.0, "RankLabel anchor_top is 0.0")
+	tester.assert_equal(quad_cv.rank_label.anchor_right, 0.5, "RankLabel in Top-Left Quadrant (anchor_right = 0.5)")
+	tester.assert_equal(quad_cv.rank_label.anchor_bottom, 0.5, "RankLabel in Top-Left Quadrant (anchor_bottom = 0.5)")
+	tester.assert_equal(quad_cv.suit_label.anchor_left, 0.0, "SuitLabel anchor_left is 0.0")
+	tester.assert_equal(quad_cv.suit_label.anchor_top, 0.5, "SuitLabel in Bottom-Left Quadrant (anchor_top = 0.5)")
+	tester.assert_equal(quad_cv.suit_label.anchor_right, 0.5, "SuitLabel in Bottom-Left Quadrant (anchor_right = 0.5)")
+	tester.assert_equal(quad_cv.suit_label.anchor_bottom, 1.0, "SuitLabel in Bottom-Left Quadrant (anchor_bottom = 1.0)")
+	tester.assert_equal(quad_cv.rank_label.text, "10", "RankLabel displays '10'")
+	tester.assert_equal(quad_cv.suit_label.text, "♥", "SuitLabel displays '♥'")
+	tester.assert_equal(quad_cv.rank_label.get_theme_font_size("font_size"), 38, "RankLabel font size is 38 for 2-character rank '10'")
+	tester.assert_equal(quad_cv.suit_label.get_theme_font_size("font_size"), 48, "SuitLabel font size is 48 occupying maximum space")
+	
+	# Test single character rank font size
+	var ace_spades := CardData.new(CardData.Rank.ACE, CardData.Suit.SPADES)
+	quad_cv.setup(ace_spades, true)
+	tester.assert_equal(quad_cv.rank_label.text, "A", "RankLabel displays 'A'")
+	tester.assert_equal(quad_cv.suit_label.text, "♠", "SuitLabel displays '♠'")
+	tester.assert_equal(quad_cv.rank_label.get_theme_font_size("font_size"), 44, "RankLabel font size is 44 for 1-character rank")
+	
+	# Test Joker
+	var joker_card := CardData.new(CardData.Rank.JOKER, CardData.Suit.SPADES)
+	quad_cv.setup(joker_card, true)
+	tester.assert_equal(quad_cv.rank_label.text, "JK", "Joker rank is 'JK'")
+	tester.assert_equal(quad_cv.suit_label.text, "★", "Joker suit is '★'")
+	
+	quad_cv.queue_free()
+	
+	# Test HandView 50% overlap spacing (50.0px)
+	var quad_hand: HandView = HandViewScene.instantiate() as HandView
+	root.add_child(quad_hand)
+	var sample_cards: Array[CardData] = [
+		CardData.new(CardData.Rank.FOUR, CardData.Suit.HEARTS),
+		CardData.new(CardData.Rank.FIVE, CardData.Suit.HEARTS),
+		CardData.new(CardData.Rank.SIX, CardData.Suit.HEARTS)
+	]
+	quad_hand.set_cards(sample_cards)
+	quad_hand.update_hand_layout(false)
+	var spacing_diff: float = quad_hand.card_views[1].position.x - quad_hand.card_views[0].position.x
+	tester.assert_true(is_equal_approx(spacing_diff, 50.0), "Hand cards overlap with 50.0px spacing, covering right quadrants")
+	quad_hand.queue_free()
+
 	tabletop.queue_free()
+
 
 

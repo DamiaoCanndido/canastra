@@ -48,10 +48,11 @@ func update_visuals() -> void:
 		child.queue_free()
 		
 	var card_count: int = meld_data.cards.size()
-	var vertical_step: float = 24.0 # Overlap step in pixels
-	var total_height: float = 145.0 + float(max(0, card_count - 1)) * vertical_step
+	var horizontal_step: float = 50.0 # Overlap step in pixels: card to the right covers right quadrants
+	var total_width: float = 100.0 + float(max(0, card_count - 1)) * horizontal_step + 8.0
+	var total_height: float = 145.0 + 26.0 # Card height (145) + badge panel (26)
 	
-	custom_minimum_size = Vector2(108, total_height + 34.0)
+	custom_minimum_size = Vector2(total_width, total_height)
 	size = custom_minimum_size
 	
 	for i in range(card_count):
@@ -59,7 +60,7 @@ func update_visuals() -> void:
 		var cv: CardView = CardViewScene.instantiate() as CardView
 		cards_container.add_child(cv)
 		cv.setup(c_data, true)
-		cv.position = Vector2(4, i * vertical_step)
+		cv.position = Vector2(4.0 + float(i) * horizontal_step, 0.0)
 		cv.z_index = i
 		cv.mouse_filter = Control.MOUSE_FILTER_IGNORE # Let the meld group handle drag & drop
 		

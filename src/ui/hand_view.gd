@@ -109,7 +109,8 @@ func update_hand_layout(animate: bool = true) -> void:
 	var center_x: float = effective_width / 2.0
 	var card_width: float = 100.0
 	var card_height: float = 145.0
-	var card_spacing: float = min(60.0, (available_width - card_width) / float(max(1, count - 1)))
+	var target_spacing: float = card_width * 0.5 # 50.0 px: card on the right covers top-right and bottom-right quadrants
+	var card_spacing: float = min(target_spacing, (available_width - card_width) / float(max(1, count - 1)))
 	if count <= 1:
 		card_spacing = 0.0
 

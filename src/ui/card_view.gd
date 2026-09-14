@@ -19,11 +19,15 @@ var base_size: Vector2 = Vector2(100, 145)
 @onready var background_panel: Panel = $Background
 @onready var front_texture: TextureRect = get_node_or_null("Background/FrontTexture") as TextureRect
 @onready var back_texture: TextureRect = get_node_or_null("Background/BackTexture") as TextureRect
-@onready var top_label: Label = $Background/TopLabel
-@onready var center_label: Label = $Background/CenterLabel
-@onready var bottom_label: Label = $Background/BottomLabel
+@onready var rank_label: Label = get_node_or_null("Background/RankLabel") as Label
+@onready var suit_label: Label = get_node_or_null("Background/SuitLabel") as Label
 @onready var selection_indicator: Panel = $Background/SelectionHighlight
 @onready var card_button: Button = $CardButton
+
+# Aliases for backward compatibility
+@onready var top_label: Label = rank_label
+@onready var center_label: Label = null
+@onready var bottom_label: Label = suit_label
 
 func _resolve_nodes() -> void:
 	if card_button == null and has_node("CardButton"):
@@ -34,14 +38,21 @@ func _resolve_nodes() -> void:
 		front_texture = get_node("Background/FrontTexture") as TextureRect
 	if back_texture == null and has_node("Background/BackTexture"):
 		back_texture = get_node("Background/BackTexture") as TextureRect
-	if top_label == null and has_node("Background/TopLabel"):
-		top_label = get_node("Background/TopLabel") as Label
-	if center_label == null and has_node("Background/CenterLabel"):
-		center_label = get_node("Background/CenterLabel") as Label
-	if bottom_label == null and has_node("Background/BottomLabel"):
-		bottom_label = get_node("Background/BottomLabel") as Label
+	if rank_label == null and has_node("Background/RankLabel"):
+		rank_label = get_node("Background/RankLabel") as Label
+	if suit_label == null and has_node("Background/SuitLabel"):
+		suit_label = get_node("Background/SuitLabel") as Label
 	if selection_indicator == null and has_node("Background/SelectionHighlight"):
 		selection_indicator = get_node("Background/SelectionHighlight") as Panel
+
+	# Fallbacks if older node names exist
+	if rank_label == null and has_node("Background/TopLabel"):
+		rank_label = get_node("Background/TopLabel") as Label
+	if suit_label == null and has_node("Background/BottomLabel"):
+		suit_label = get_node("Background/BottomLabel") as Label
+		
+	top_label = rank_label
+	bottom_label = suit_label
 
 	if card_button != null:
 		if not card_button.pressed.is_connected(_on_button_pressed):
@@ -108,37 +119,35 @@ func _render_card_front() -> void:
 	var r_str: String = _get_rank_string()
 	var color: Color = _get_card_color()
 	
-	if top_label != null: top_label.visible = true
-	if center_label != null: center_label.visible = true
-	if bottom_label != null: bottom_label.visible = true
+	if rank_label != null: rank_label.visible = true
+	if suit_label != null: suit_label.visible = true
 	
 	if card_data.is_joker():
-		if top_label != null:
-			top_label.text = "JK"
-			top_label.add_theme_color_override("font_color", Color(0.65, 0.22, 0.15))
-		if center_label != null:
-			center_label.text = "★\nCORINGA"
-			center_label.add_theme_color_override("font_color", Color(0.65, 0.22, 0.15))
-		if bottom_label != null:
-			bottom_label.text = "JK"
-			bottom_label.add_theme_color_override("font_color", Color(0.65, 0.22, 0.15))
+		var joker_color := Color(0.65, 0.22, 0.15)
+		if rank_label != null:
+			rank_label.text = "JK"
+			rank_label.add_theme_color_override("font_color", joker_color)
+			rank_label.add_theme_font_size_override("font_size", 38)
+		if suit_label != null:
+			suit_label.text = "★"
+			suit_label.add_theme_color_override("font_color", joker_color)
+			suit_label.add_theme_font_size_override("font_size", 44)
 	else:
-		if top_label != null:
-			top_label.text = "%s\n%s" % [r_str, s_sym]
-			top_label.add_theme_color_override("font_color", color)
-		if center_label != null:
-			center_label.text = s_sym
-			center_label.add_theme_color_override("font_color", color)
-		if bottom_label != null:
-			bottom_label.text = "%s\n%s" % [s_sym, r_str]
-			bottom_label.add_theme_color_override("font_color", color)
+		if rank_label != null:
+			rank_label.text = r_str
+			rank_label.add_theme_color_override("font_color", color)
+			var rank_font_size: int = 38 if r_str.length() > 1 else 44
+			rank_label.add_theme_font_size_override("font_size", rank_font_size)
+		if suit_label != null:
+			suit_label.text = s_sym
+			suit_label.add_theme_color_override("font_color", color)
+			suit_label.add_theme_font_size_override("font_size", 48)
 
 func _render_card_back() -> void:
 	if front_texture != null: front_texture.visible = false
 	if back_texture != null: back_texture.visible = true
-	if top_label != null: top_label.visible = false
-	if bottom_label != null: bottom_label.visible = false
-	if center_label != null: center_label.visible = false
+	if rank_label != null: rank_label.visible = false
+	if suit_label != null: suit_label.visible = false
 
 func _get_suit_symbol() -> String:
 	if card_data == null: return ""
